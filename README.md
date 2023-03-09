@@ -1,1 +1,3 @@
 # noteleDHM-Tool
+
+#Among the optical configuration of the imaging system in DHM, imaging systems operating in a non-telecentric regime are the most common ones. The spherical wavefront introduced by the non-telecentric DHM system must be compensated to provide undistorted phase measurements. Here, we present a clear and simple procedure for a total compensation algorithm for non-telecentric DHM holograms independent of the sample's size (i.e., no requiring sample-free field of view within the hologram). The proposed method has been implemented in MATLAB 2021a and Python 3.7.1. Users of the proposed method should have installed the Optimization and Global Optimization MATLAB toolboxes and the scipy library from Python.
