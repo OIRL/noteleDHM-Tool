@@ -1,5 +1,5 @@
 """
-Title: no_tele_compensation.py
+Title: no_tele_main.py
 
 Description: This Python script provides phase compensation for DHM holograms recorded in a non-telecentric configuration. 
 The code was originally developed in MATLAB by Brian Bogue-Jimenez, with assistance from Prof. Ana Doblas and PhD student 
