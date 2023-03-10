@@ -127,13 +127,12 @@ def FT(holo):
     # Return the transformed image
     return ft
 
-def threshold_FT(FT_holo, M, N, factor):
+def threshold_FT(FT_holo, M, N):
 
     '''
     Variables:
     FT_holo: numpy array with hologram spectrum data to be processed
     M and N: integer varaibles representing the number of pixels in each dimension of 'FT_holo'
-    factor: float variable indicating the thresholding factor [0-1]
     '''
     
     # Calculate the intensity (amplitude) of the transformed image
@@ -155,8 +154,7 @@ def threshold_FT(FT_holo, M, N, factor):
     # Calculate the threshold using Otsu's method
     threshold = threshold_otsu(bins)
     # Binarize the image using the calculated threshold
-    #factor = 0.4 #This value is critical. It depends on the sample features. This value must be carefully selected so the +1 D.O. can be properly detected
-    BW = np.where(I > threshold*factor, 1, 0)
+    BW = np.where(I > threshold*0.4, 1, 0)
     
     # Display the resulting binary image
     #plt.figure(); plt.imshow(BW, cmap='gray'); plt.title('Thresholded image');  plt.gca().set_aspect('equal', adjustable='box'); plt.show()

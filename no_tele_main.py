@@ -29,13 +29,11 @@ import funs
 The main code starts here
 '''
 
-#Different image file to process (no-tele holograms)
-string_array = ["4cm_20x_bigcakes.tiff", "-4cm_20x_star.tiff", "4cm_20x_usaf.tiff", "RBCnotele50x.tiff"]
+#Different image files to process (no-tele holograms). Sample input holograms located in 'data/'
+#["4cm_20x_bigcakes.tiff", "-4cm_20x_star.tiff", "4cm_20x_usaf.tiff", "RBCnotele50x.tiff"]
 
 #Loading image file (hologram) to process
-i = 1
 user_input = input("Please enter the name of the hologram file to compensate. Sample input options: \n 4cm_20x_bigcakes.tiff \n -4cm_20x_star.tiff \n 4cm_20x_usaf.tiff \n RBCnotele50x.tiff \n")
-#filename = 'data/' + string_array[i]
 filename = 'data/' + user_input
 print ('Non-telecentric hologram: ', filename)
 
@@ -76,8 +74,7 @@ print ('Phase compensation starts...')
 FT_holo = funs.FT(holo);
 
 #Let's threshold that FT
-factor = 1
-BW = funs.threshold_FT(FT_holo, M, N, factor)
+BW = funs.threshold_FT(FT_holo, M, N)
 
 #Get the +1 D.O. term region and coordinates
 #start = timer()	#Start to count time
