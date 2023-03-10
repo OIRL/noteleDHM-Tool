@@ -30,11 +30,11 @@ The main code starts here
 '''
 
 #Different image file to process (no-tele holograms)
-string_array = ["holonotele4cm8x.tif", "holonotele4cm10x.tif", "HoloRBCnotele50x.tif", "RBCnotele50x.tif"]
+string_array = ["4cm_20x_bigcakes.tiff", "-4cm_20x_star.tiff", "4cm_20x_usaf.tiff", "RBCnotele50x.tiff"]
 
 #Loading image file (hologram) to process
 i = 1
-user_input = input("Please enter the name of the hologram file to compensate. Sample input options: \n holonotele4cm8x.tif \n holonotele4cm10x.tif \n")
+user_input = input("Please enter the name of the hologram file to compensate. Sample input options: \n 4cm_20x_bigcakes.tiff \n -4cm_20x_star.tiff \n 4cm_20x_usaf.tiff \n RBCnotele50x.tiff \n")
 #filename = 'data/' + string_array[i]
 filename = 'data/' + user_input
 print ('Non-telecentric hologram: ', filename)
