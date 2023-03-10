@@ -12,7 +12,17 @@ Functions:
 - binarize_compensated_plus1: takes a complex field as input and returns a binary image by thresholding the real component of the field.
 - get_g_and_h: takes a binary image as input and returns the distance between the center of the largest connected component in the image and the true center of the image. The function also plots the image with a rectangle around the largest connected component and a cross at the true center.
 - phi_spherical_C: generates a complex-valued wavefront to compensate for the spherical phase factor considering square +1 term (only C).
-- phi_spherical_CxCy: generates a complex-valued wavefront to compensate for the spherical phase factor considering rectangular +1 term (Cy != Cx).
+- bin_CF_noTele_BAR_1d: generates the output value of the cost function based on binarizing the resulting phase image.
+- std_CF_noTele_BAR_1d: generates the output value of the cost function based on computing the standard deviation of the resulting phase image.
+- fmincon: finds the minimum of a constrained multivariable function. 
+- fminunc: finds the minimum scalar value of a non-linear unconstrained multivariable objective function.
+- fsolver: returns a vector that minimizes the objective function by solving for the function F(x) = 0.
+- simulannealbnd: simulated annealing probabilistic technique well suited for finding the global minimum of a large and discrete search space.
+- pareto_search: finds the points in a Pareto front that minimizes two cost functions of a two-dimensional variable. In this case, we use the J1 and J2 cost functions.
+- genetic_algorithm: minimizes a cost function given the number of variables in the function by iteratively picking the best population values within the range specified by the bounds.
+- pattern_search: algorithm that does not utilize gradients, allowing for the convergence of cost functions that are not continuous or differentiable. 
+- hybrid_ga_ps: finds the minimum value of a cost function using first the GA search, and then finetunes with the PS search.
+- brute: finds the minimum value of a cost function in the whole search range with a fixed number of steps.
 
 Date: January 6, 2023
 Updated: March 10, 2023
