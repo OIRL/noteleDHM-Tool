@@ -72,7 +72,6 @@ from scipy.optimize import fsolve
 #The basinhopping algorithm is a global optimization algorithm that combines a local optimizer such as L-BFGS-B with a random sampling method, such as Metropolis-Hastings. It allows to set a 'callback' function that is called after each iteration of the optimization. In this callback function, one can check if the current solution is non-dominated, and if it is, you can add it to your Pareto front.
 from scipy.optimize import basinhopping 
 
-
 def holo_read(filename, vargin):
 
     '''

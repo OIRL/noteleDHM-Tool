@@ -46,17 +46,37 @@ plt.figure(); plt.imshow(holo, cmap='gray'); plt.title('Hologram');
 plt.gca().set_aspect('equal', adjustable='box'); plt.show()
 
 #Variables and flags for hologram reconstruction
-Lambda = 633*10**(-9)
 #Lambda = 532*10**(-9)
+user_input = input("Please enter illumination wavelength in nanometers (Press enter for default): ")
+if len(user_input.strip()) == 0:
+    Lambda = 633*10**(-9)
+else:
+    Lambda = float(user_input)*10**(-9)
+print('Lambda: ', Lambda)
+
 k = 2*np.pi/Lambda
-dx = 6.9*10**(-6)
-dy = 6.9*10**(-6)
+
+user_input = input("Please enter pixel width in micrometers (Press Enter for default): ")
+if len(user_input.strip()) == 0:
+    dx = 6.9*10**(-6)
+else:
+    dx = float(user_input)*10**(-6)
+print('dx : ', dx)
+
+user_input = input("Please enter pixel height in micrometers (Press Enter for default): ")
+if len(user_input.strip()) == 0:
+    dy = 6.9*10**(-6)
+else:
+    dy = float(user_input)*10**(-6)
+print('dy : ', dy)
+
+print ('Phase compensation starts...')
 
 #Let's go to the spatial frequency domain
 FT_holo = funs.FT(holo);
 
 #Let's threshold that FT
-factor = 0.4
+factor = 1
 BW = funs.threshold_FT(FT_holo, M, N, factor)
 
 #Get the +1 D.O. term region and coordinates
@@ -92,11 +112,22 @@ Up to this point the phase compensation for no telecentric DHM holograms is fini
 np.random.seed(0)
 
 #Different available optimization methods
-alg_array = ["GA+PS","GA","PS","FMC","FMU","FSO","PTS","PSW","SA","SGO", "BRUTE"]
-i = 0; alg = alg_array[i]
+alg_array = ["FMC","FMU","FSO","SA","PTS","GA","PS","GA+PS", "BRUTE"]
+i = 0; 
+
+user_input = input("Please enter the optimization method to fine tune the phase compensation. Available options (see documentation for more details): \n 0: FMC \n 1: FMU \n 2: FSO \n 3: SA \n 4: PTS \n 5: GA \n 6: PS \n 7: GA+PS \n 8: BRUTE \n")
+i = int(user_input)
+print ('Selectec optimization method: ', alg_array[i])
+
+alg = alg_array[i]
+
 #Two available const functions
-cost = 1 # 0 - BIN -- 1 - SD
 cost_fun = ['BIN cost function','STD cost function']
+#cost = 1 # 0 - BIN -- 1 - SD
+user_input = input("Please enter the cost function to to minimize. Available options (see documentation for more details): \n 0: BIN \n 1: SD \n")
+i = int(user_input)
+cost = i
+print ('Selectec cost function: ', cost_fun[i])
 
 # Define the function phi_spherical_C for the optimization (it's the same used before, but built for optimization)
 phi_spherical_C = lambda C: (np.pi / (C * Lambda)) * ((X - (g + 1))**2 + (Y - (h + 1))**2) * (dx**2)
