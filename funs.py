@@ -75,6 +75,12 @@ from scipy.optimize import basinhopping
 
 def holo_read(filename, vargin):
 
+    '''
+    Variables:
+    filename: string variable with the name of the hologram to be process
+    vargin: float variable determining a factor [0-1] to scale the input image
+    '''
+    
     # Read in the image file
     holo = imageio.imread(filename)
     # assing scale factor
@@ -108,6 +114,12 @@ def holo_read(filename, vargin):
     return holo, M, N, m, n
 
 def FT(holo):
+
+    '''
+    Variables:
+    holo: numpy array with hologram data to be processed.
+    '''
+    
     # Shift the zero frequency component of the image to the center
     # Take the 2D fast Fourier transform of the shifted image
     # Shift the zero frequency component back to the top left
@@ -117,6 +129,14 @@ def FT(holo):
     return ft
 
 def threshold_FT(FT_holo, M, N, factor):
+
+    '''
+    Variables:
+    FT_holo: numpy array with hologram spectrum data to be processed
+    M and N: integer varaibles representing the number of pixels in each dimension of 'FT_holo'
+    factor: float variable indicating the thresholding factor [0-1]
+    '''
+    
     # Calculate the intensity (amplitude) of the transformed image
     I = np.sqrt(np.abs(FT_holo))
     
@@ -147,6 +167,12 @@ def threshold_FT(FT_holo, M, N, factor):
   
 def get_plus1(bw):
 
+    '''
+    Variables:
+    bw: numpy array with thresholded hologram spectrum data to be processed
+    '''
+    
+    #Isolating the +1 difraction orders
     cc = label(bw, connectivity=1)
     numPixels = [len(cc[cc == i]) for i in range(1, cc.max()+1)]
     numPixels = np.array(numPixels) # convert the list to a NumPy array
@@ -185,6 +211,18 @@ def get_plus1(bw):
     return plus_coor, m, n, p, q
 
 def filter_center_plus1(FT_holo, plus_coor, m, n, Lambda, X, Y, dx, dy, k):
+
+    '''
+    Variables:
+    FT_holo: numpy array with hologram spectrum data to be processed
+    plus_coor: list with two floating-point values representing the x-coordinate and y-coordinate of the center point of the +1 term
+    M and N: integer varaibles representing the number of pixels in each dimension of 'FT_holo'
+    Lambda: float variable indicating the illumination wavelength
+    X and Y: are two-dimensional numpy arrays of integers with shapes (N, M), where N and M are the dimensions of the mesh.
+    dx and dy: float varaibles indicating the pixel pitches along the x- and y-directions.
+    k: float variable indicating the wavenumber.
+    '''
+    
     # Find the shape of the FT_holo array
     M, N = FT_holo.shape
     # Initialize a filter array of zeros with the same shape as FT_holo
@@ -211,6 +249,11 @@ def filter_center_plus1(FT_holo, plus_coor, m, n, Lambda, X, Y, dx, dy, k):
     return holoCompensate
 
 def binarize_compensated_plus1(I):
+
+    '''
+    Variables:
+    I: numpy array with hologram spectrum data to be binarized
+    '''
     #lets take the real component of this complex field
     R = np.real(I)
     mi = np.min(np.min(R)); mx = np.max(np.max(R))
@@ -227,6 +270,12 @@ def binarize_compensated_plus1(I):
 
 def get_g_and_h(bw):
 
+    '''
+    Variables:
+    bw: numpy array with binarized hologram spectrum data to be processed
+    '''
+    
+    #Segment the spherical phase factor coordinates
     cc = label(bw, connectivity=1)
     numPixels = [len(cc[cc == i]) for i in range(1, cc.max()+1)]
     numPixels = np.array(numPixels) # convert the list to a NumPy array
@@ -272,30 +321,59 @@ def get_g_and_h(bw):
     return g, h
 
 def phi_spherical_C(C, g, h, dx, X, Y, Lambda):
+    '''
+    Variables:
+    C: float variable indicatinng the phase factor curvature
+    g and h: flaot variables indicating the coordinated of the spherical phase factor
+    dx: float variable indicating the pixel pitc in the x direction.
+    X and Y: are two-dimensional numpy arrays of integers with shapes (N, M), where N and M are the dimensions of the mesh.
+    Lambda: float variable indicating the illumination wavelength
+    '''
     return (np.pi/(Lambda*C))*((X-(g+1))**2 + (Y-(h+1))**2)*(dx**2)
     
 def bin_CF_noTele_BAR_1d(fun, seed_cur, holoCompensate, M, N):
-    phi_spherical = fun(seed_cur)
-    phase_mask = np.exp((-1j)*phi_spherical)
-    corrected_image = holoCompensate * phase_mask
-    phase = np.angle(corrected_image)
-    phase = phase + np.pi
-    ib = np.where(phase > 0.5, 1, 0)
-    J = M*N - np.sum(ib)
+    '''
+    Variables:
+    fun: function to optimize
+    seed_cur: flaot variable indicating the seed of the search 
+    holoCompensate: hologram data to compensate
+    M and N: integer varaibles representing the number of pixels in each dimension of 'holoCompensate'
+    '''
+    phi_spherical = fun(seed_cur)  # Compute phi_spherical by calling the function fun with input seed_cur.
+    phase_mask = np.exp((-1j)*phi_spherical)  # Compute the phase mask by taking the exponential of -1j times phi_spherical.
+    corrected_image = holoCompensate * phase_mask  # Compensate the image by multiplying the hologram with the phase mask.
+    phase = np.angle(corrected_image)  # Compute the phase of the corrected image using np.angle.
+    phase = phase + np.pi  # Add pi to the phase to shift the values from [-pi, pi] to [0, 2*pi].
+    ib = np.where(phase > 0.5, 1, 0)  # Create a binary image ib by thresholding the phase values.
+    J = M*N - np.sum(ib)  # Compute the number of pixels with value 0 in the binary image ib.
     return J
 
 def std_CF_noTele_BAR_1d(fun, Cx, holoCompensate, M, N):
-    phi_spherical = fun(Cx)
-    phase_mask = np.exp((-1j)*phi_spherical)
-    corrected_image = holoCompensate * phase_mask
-    phase = np.angle(corrected_image)
-    phase = phase + np.pi
-    J = np.std(phase)
-    if Cx == 0:
+    '''
+    Variables:
+    fun: function to optimize
+    Cx: float variable indicating the initial phase factor curvature (seed)
+    holoCompensate: hologram data to compensate
+    M and N: integer varaibles representing the number of pixels in each dimension of 'holoCompensate'
+    '''
+    phi_spherical = fun(Cx)  # Compute phi_spherical by calling the function fun with input seed Cx.
+    phase_mask = np.exp((-1j)*phi_spherical)  # Compute the phase mask by taking the exponential of -1j times phi_spherical.
+    corrected_image = holoCompensate * phase_mask  # Compensate the image by multiplying the hologram with the phase mask.
+    phase = np.angle(corrected_image)  # Compute the phase of the corrected image using np.angle.
+    phase = phase + np.pi  # Add pi to the phase to shift the values from [-pi, pi] to [0, 2*pi].
+    J = np.std(phase)  # Compute the standard deviation of the phase values.
+    if Cx == 0:  # If Cx is 0, set J to 0.5 (a special case).
         J = 0.5
-    return J
+    return J  # Return the computed value of J.
 
 def fmincon(minfunc, lb, ub, Cy):
+    '''
+    Variables:
+    minfunc: function to minimize
+    lb and ub: float variables indicating low and upper bounderies of the search range
+    Cy: float variable indicating the initial phase factor curvature (seed)
+    '''
+
     start = timer()	#Start to count time
     nlc = NonlinearConstraint(fun = minfunc, lb = lb, ub = ub)
     out = optimize.minimize(fun = minfunc, x0 = Cy, method='SLSQP', constraints=nlc) #The 'SLSQP' is equivalent to the default 'interior-point' algorithm that MATLAB's 'fmincon' function uses.
@@ -308,6 +386,11 @@ def fmincon(minfunc, lb, ub, Cy):
     return Cy_opt
     
 def fminunc(minfunc, Cy):
+    '''
+    Variables:
+    minfunc: function to minimize
+    Cy: float variable indicating the initial phase factor curvature (seed)
+    '''
     start = timer()	#Start to count time
     gradient = lambda t: derivative(minfunc, t) #gradient function
     out = fmin_ncg(minfunc, x0 = Cy, fprime=gradient)
@@ -316,6 +399,11 @@ def fminunc(minfunc, Cy):
     return Cy_opt
 
 def fsolver(minfunc, Cy):
+    '''
+    Variables:
+    minfunc: function to minimize
+    Cy: float variable indicating the initial phase factor curvature (seed)
+    '''
     start = timer()	#Start to count time
     root = fsolve(minfunc, x0 = Cy)
     Cy_opt = root
@@ -323,6 +411,11 @@ def fsolver(minfunc, Cy):
     return Cy_opt
 
 def simulannealbnd(minfunc, lb, ub):
+    '''
+    Variables:
+    minfunc: function to minimize
+    lb and ub: float variables indicating low and upper bounderies of the search range
+    '''
     start = timer()	#Start to count time
     # Define the bounds of the optimization problem
     bounds = [(lb, ub)]
@@ -333,6 +426,11 @@ def simulannealbnd(minfunc, lb, ub):
     return Cy_opt
 
 def pareto_search(minfunc, Cy):
+    '''
+    Variables:
+    minfunc: function to minimize
+    Cy: float variable indicating the initial phase factor curvature (seed)
+    '''
     start = timer()	#Start to count time
     # Initialize the Pareto front
     pareto_front = []
@@ -354,6 +452,11 @@ def pareto_search(minfunc, Cy):
     return Cy_opt
     
 def genetic_algorithm(minfunc, lb, ub):
+    '''
+    Variables:
+    minfunc: function to minimize
+    lb and ub: float variables indicating low and upper bounderies of the search range
+    '''
     start = timer()	#Start to count time
     out = differential_evolution(minfunc, bounds = [(lb, ub)]) #, options=options)
     if out.success:
@@ -365,6 +468,11 @@ def genetic_algorithm(minfunc, lb, ub):
     return Cy_opt
 
 def pattern_search(minfunc, Cy):
+    '''
+    Variables:
+    minfunc: function to minimize
+    Cy: float variable indicating the initial phase factor curvature (seed)
+    '''
     start = timer()	#Start to count time
     out = optimize.minimize(fun = minfunc, x0 = Cy, method='Nelder-Mead')
     if out.success:
@@ -376,6 +484,11 @@ def pattern_search(minfunc, Cy):
     return Cy_opt
 
 def hybrid_ga_ps(minfunc, lb, ub):
+    '''
+    Variables:
+    minfunc: function to minimize
+    lb and ub: float variables indicating low and upper bounderies of the search range
+    '''
     start = timer()	#Start to count time
     out = differential_evolution(minfunc, bounds = [(lb, ub)]) #, options=options)
     if out.success:
@@ -395,6 +508,11 @@ def hybrid_ga_ps(minfunc, lb, ub):
     return Cy_opt
 
 def brute(minfunc, lb, ub):
+    '''
+    Variables:
+    minfunc: function to minimize
+    lb and ub: float variables indicating low and upper bounderies of the search range
+    '''
     start = timer()	#Start to count time
     lb = -15
     ub = 0
