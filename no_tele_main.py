@@ -33,8 +33,10 @@ The main code starts here
 string_array = ["holonotele4cm8x.tif", "holonotele4cm10x.tif", "HoloRBCnotele50x.tif", "RBCnotele50x.tif"]
 
 #Loading image file (hologram) to process
-i = 10
-filename = string_array[i]
+i = 1
+user_input = input("Please enter the name of the hologram file to compensate. Sample input options: \n holonotele4cm8x.tif \n holonotele4cm10x.tif \n")
+#filename = 'data/' + string_array[i]
+filename = 'data/' + user_input
 print ('Non-telecentric hologram: ', filename)
 
 vargin = 0.5 #Scalling factor of the input images
@@ -91,7 +93,7 @@ np.random.seed(0)
 
 #Different available optimization methods
 alg_array = ["GA+PS","GA","PS","FMC","FMU","FSO","PTS","PSW","SA","SGO", "BRUTE"]
-i = 10; alg = alg_array[i]
+i = 0; alg = alg_array[i]
 #Two available const functions
 cost = 1 # 0 - BIN -- 1 - SD
 cost_fun = ['BIN cost function','STD cost function']
