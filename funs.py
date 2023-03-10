@@ -35,24 +35,32 @@ import skimage.transform
 from skimage.measure import label, regionprops
 from skimage.filters import threshold_otsu
 
+#Time counting library
 from timeit import default_timer as timer
 
-from scipy import optimize
 #The pattern search method is implemented using the 'Nelder-Mead' of the scipy library. Although it is not the same, since "Nelder–Mead method aka. the simplex method conceptually resembles PS in its narrowing of the search range for multi-dimensional search spaces but does so by maintaining n + 1 points for n-dimensional search spaces, whereas PS methods computes 2n + 1 points (the central point and 2 points in each dimension).", it is the closest python implementation. The exact same method is the 'direct' method of the same linrary, however, this method is deprecated and it is not recomended. See: https://docs.scipy.org/doc/scipy/reference/optimize.minimize-neldermead.html
 #The 'pattern search' method is implemented using the closest 'Nelder-Mead' method of the scipy library. See: https://en.wikipedia.org/wiki/Pattern_search_(optimization)#:~:text=Pattern%20search%20(also%20known%20as,are%20not%20continuous%20or%20differentiable.
-    
 #The 'dual_annealing' method implements the MATLAB's 'simulated annealing'. This function implements the Dual Annealing optimization. This stochastic approach combines the generalization of CSA (Classical Simulated Annealing) and FSA (Fast Simulated Annealing) coupled to a strategy for applying a local search on accepted locations. See: https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.dual_annealing.html#scipy.optimize.dual_annealing
+from scipy import optimize
+   
+#Emulates the MATLAB's ga. See: https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.differential_evolution.html
+from scipy.optimize import differential_evolution
 
-from scipy.optimize import differential_evolution #Emulates the MATLAB's ga. See: https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.differential_evolution.html
-from scipy.optimize import NonlinearConstraint #Emulates MATLAB fmincon's 'interior-point' algorithm. See: https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.NonlinearConstraint.html#scipy.optimize.NonlinearConstraint
+#Emulates MATLAB fmincon's 'interior-point' algorithm. See: https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.NonlinearConstraint.html#scipy.optimize.NonlinearConstraint
+from scipy.optimize import NonlinearConstraint 
 
-from scipy.misc import derivative #Needed for the 'fmin_ncg' method (MATLAB's 'fminunc' equivalent).
-from scipy.optimize import fmin_ncg #MATLAB's 'fminunc' equivalent. See: https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.fmin_ncg.html#scipy.optimize.fmin_ncg
+#Needed for the 'fmin_ncg' method (MATLAB's 'fminunc' equivalent).
+from scipy.misc import derivative 
 
-from scipy.optimize import fsolve #Emulates MATLAB's 'fsolve'. See: https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.fsolve.html#scipy.optimize.fsolve
+#MATLAB's 'fminunc' equivalent. See: https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.fmin_ncg.html#scipy.optimize.fmin_ncg
+from scipy.optimize import fmin_ncg
 
-from scipy.optimize import basinhopping #Function needed for the Pareto Search:
+#Emulates MATLAB's 'fsolve'. See: https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.fsolve.html#scipy.optimize.fsolve
+from scipy.optimize import fsolve 
+
+#Function needed for the Pareto Search:
 #The basinhopping algorithm is a global optimization algorithm that combines a local optimizer such as L-BFGS-B with a random sampling method, such as Metropolis-Hastings. It allows to set a 'callback' function that is called after each iteration of the optimization. In this callback function, one can check if the current solution is non-dominated, and if it is, you can add it to your Pareto front.
+from scipy.optimize import basinhopping 
 
 
 def holo_read(filename, vargin):
