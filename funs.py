@@ -14,15 +14,23 @@ Functions:
 - phi_spherical_C: generates a complex-valued wavefront to compensate for the spherical phase factor considering square +1 term (only C).
 - phi_spherical_CxCy: generates a complex-valued wavefront to compensate for the spherical phase factor considering rectangular +1 term (Cy != Cx).
 
-Date: January 6, 2022
+Date: January 6, 2023
+Updated: March 10, 2023
 
 Authors: Brian Bogue-Jimenez, Carlos Trujillo, and Ana Doblas
 """
 
+#All operations are perfomed using numpy
 import numpy as np
+
+#Ploting and visualizing results
 import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle
+
+#IO image files handling
 import imageio
+
+#Image processing operations and functions from SciKit learn library
 import skimage.transform
 from skimage.measure import label, regionprops
 from skimage.filters import threshold_otsu
@@ -46,14 +54,6 @@ from scipy.optimize import fsolve #Emulates MATLAB's 'fsolve'. See: https://docs
 from scipy.optimize import basinhopping #Function needed for the Pareto Search:
 #The basinhopping algorithm is a global optimization algorithm that combines a local optimizer such as L-BFGS-B with a random sampling method, such as Metropolis-Hastings. It allows to set a 'callback' function that is called after each iteration of the optimization. In this callback function, one can check if the current solution is non-dominated, and if it is, you can add it to your Pareto front.
 
-import pyswarms as ps #The particle swarm optimization library for python.
-
-#The parmoo library allow to use surrogate radial basis functions for optimization as MATLAB's 'surrogate'. See: https://parmoo.readthedocs.io/en/latest/modules/surrogates.html
-from parmoo import MOOP
-from parmoo.optimizers import LocalGPS
-from parmoo.searches import LatinHypercube
-from parmoo.surrogates import GaussRBF
-from parmoo.acquisitions import UniformWeights
 
 def holo_read(filename, vargin):
 
@@ -276,28 +276,6 @@ def std_CF_noTele_BAR_1d(fun, Cx, holoCompensate, M, N):
     if Cx == 0:
         J = 0.5
     return J
-    
-def genetic_algorithm(minfunc, lb, ub):
-    start = timer()	#Start to count time
-    out = differential_evolution(minfunc, bounds = [(lb, ub)]) #, options=options)
-    if out.success:
-        print("Optimization successful!")
-    else:
-        print("Optimization failed.")
-    Cy_opt = out.x
-    print("Processing time differential_evolution:", timer()-start) #Time for differential_evolution execution
-    return Cy_opt
-
-def pattern_search(minfunc, Cy):
-    start = timer()	#Start to count time
-    out = optimize.minimize(fun = minfunc, x0 = Cy, method='Nelder-Mead')
-    if out.success:
-        print("Optimization successful!")
-    else:
-        print("Optimization failed.")
-    Cy_opt = out.x
-    print("Processing time PS:", timer()-start) #Time for PS execution
-    return Cy_opt
 
 def fmincon(minfunc, lb, ub, Cy):
     start = timer()	#Start to count time
@@ -310,7 +288,7 @@ def fmincon(minfunc, lb, ub, Cy):
     Cy_opt = out.x
     print("Processing time FMC:", timer()-start) #Time for FMC execution
     return Cy_opt
-
+    
 def fminunc(minfunc, Cy):
     start = timer()	#Start to count time
     gradient = lambda t: derivative(minfunc, t) #gradient function
@@ -324,6 +302,16 @@ def fsolver(minfunc, Cy):
     root = fsolve(minfunc, x0 = Cy)
     Cy_opt = root
     print("Processing time FSO:", timer()-start) #Time for FSO execution
+    return Cy_opt
+
+def simulannealbnd(minfunc, lb, ub):
+    start = timer()	#Start to count time
+    # Define the bounds of the optimization problem
+    bounds = [(lb, ub)]
+    # Use the dual_annealing method to minimize the objective function
+    out = optimize.dual_annealing(minfunc, bounds)
+    Cy_opt = out.x
+    print("Processing time SA:", timer()-start) #Time for SA execution  
     return Cy_opt
 
 def pareto_search(minfunc, Cy):
@@ -347,78 +335,26 @@ def pareto_search(minfunc, Cy):
     print("Processing time PTS:", timer()-start) #Time for PTS execution 
     return Cy_opt
     
-def particleswarm(minfunc, lb, ub):
+def genetic_algorithm(minfunc, lb, ub):
     start = timer()	#Start to count time
-    # Perform the optimization
-    max_bound = ub * np.ones(1)
-    min_bound = lb * np.ones(1)
-    bounds = (min_bound, max_bound) #Defining the bounds of the search
-    options = {'c1': 0.5, 'c2': 0.3, 'w': 0.9} # options for the optimization (default c1 and c2 are the cognitive and social parameters respectively, w is the inertia weight. These parameters affect the exploration/exploitation trade-off of the algorithm)
-    optimizer = ps.single.GlobalBestPSO(n_particles=1, dimensions=1, options=options, bounds=bounds)
-    out = optimizer.optimize(minfunc, iters=300)
-    Cy_opt = out[1] # out[1] is the position of the best particle, which will be the optimal solution of the optimization.
-    print("Processing time PSW:", timer()-start) #Time for PSW execution  
-    return Cy_opt
-    
-def simulannealbnd(minfunc, lb, ub):
-    start = timer()	#Start to count time
-    # Define the bounds of the optimization problem
-    bounds = [(lb, ub)]
-    # Use the dual_annealing method to minimize the objective function
-    out = optimize.dual_annealing(minfunc, bounds)
+    out = differential_evolution(minfunc, bounds = [(lb, ub)]) #, options=options)
+    if out.success:
+        print("Optimization successful!")
+    else:
+        print("Optimization failed.")
     Cy_opt = out.x
-    print("Processing time SA:", timer()-start) #Time for SA execution  
+    print("Processing time differential_evolution:", timer()-start) #Time for differential_evolution execution
     return Cy_opt
-    
-def brute(minfunc, lb, ub):
+
+def pattern_search(minfunc, Cy):
     start = timer()	#Start to count time
-    lb = -15
-    ub = 0
-    steps = 500
-    step = (ub-lb)/steps
-    print ("ub :", ub, "lb: ", lb, "step: ", step)
-    val_min = 1e6
-    for i in range(1, steps):
-        val = minfunc(lb + step*i)
-        if val < val_min:
-            val_min = val
-            Cy_opt = lb + step*i
-
-    print("Processing time BRUTE:", timer()-start) #Time for SA execution  
-    return Cy_opt
-    
-def surrogateopt(minfunc, lb, ub):
-    start = timer()	#Start to count time surrogateopt
-    my_moop = MOOP(LocalGPS)
-    # Add a single continuous design variable in the range [lb, ub]
-    my_moop.addDesign({'name': "x1", # optional, name
-                   'des_type': "continuous", # optional, type of variable
-                   'lb': lb, # required, lower bound
-                   'ub': ub, # required, upper bound
-                   'tol': 1.0e-8 # optional tolerance
-                  })
-
-    def sim_func(x):
-        return np.array([minfunc(x["x1"]), 1]) # Define the function for the problem (minfunc)
-      
-    # Add the simulation to the problem
-    my_moop.addSimulation({'name': "MySim", # Optional name for this simulation
-                       'm': 2, # This simulation has 1 outputs
-                       'sim_func': sim_func, # Our sample sim_func from above
-                       'search': LatinHypercube, # Use a LH search
-                       'surrogate': GaussRBF, # Use a Gaussian RBF surrogate
-                       'hyperparams': {}, # Hyperparams passed to internals
-                       'sim_db': { # Optional dict of precomputed points
-                                  'search_budget': 10 # Set search budget
-                                 },
-                      })
-                           
-    my_moop.addObjective({'name': "f1", 'obj_func': lambda x, s: s["MySim"][0]}) # First objective just returns the first simulation output
-    my_moop.addAcquisition({'acquisition': UniformWeights, 'hyperparams': {}}) # Add 1 acquisition function
-    my_moop.solve(5) # Solve with 5 iterations of ParMOO algorithm
-    results = my_moop.getPF() # Extract the results
-    Cy_opt = results[0][0] # Save solution
-    print("Processing time SGO:", timer()-start) #Time for SGO execution  
+    out = optimize.minimize(fun = minfunc, x0 = Cy, method='Nelder-Mead')
+    if out.success:
+        print("Optimization successful!")
+    else:
+        print("Optimization failed.")
+    Cy_opt = out.x
+    print("Processing time PS:", timer()-start) #Time for PS execution
     return Cy_opt
 
 def hybrid_ga_ps(minfunc, lb, ub):
@@ -438,4 +374,21 @@ def hybrid_ga_ps(minfunc, lb, ub):
     Cy_opt = out2.x
 
     print("Processing time hybrid_ga_ps:", timer()-start) #Time for SA execution  
-    return Cy_opt  
+    return Cy_opt
+
+def brute(minfunc, lb, ub):
+    start = timer()	#Start to count time
+    lb = -15
+    ub = 0
+    steps = 500
+    step = (ub-lb)/steps
+    print ("ub :", ub, "lb: ", lb, "step: ", step)
+    val_min = 1e6
+    for i in range(1, steps):
+        val = minfunc(lb + step*i)
+        if val < val_min:
+            val_min = val
+            Cy_opt = lb + step*i
+
+    print("Processing time BRUTE:", timer()-start) #Time for SA execution  
+    return Cy_opt
