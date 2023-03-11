@@ -40,6 +40,9 @@ from matplotlib.patches import Rectangle
 #IO image files handling
 import imageio
 
+#OpenCV library. Image manipulation and visualization.
+import cv2
+
 #Image processing operations and functions from SciKit learn library
 import skimage.transform
 from skimage.measure import label, regionprops
@@ -259,8 +262,6 @@ def filter_center_plus1_manual(holo, Lambda, X, Y, dx, dy, k):
     M, N = holo.shape
     # Initialize a filter array of zeros with the same shape as FT_holo
     Filter = np.zeros((M, N))
-    # Ignore warnings from NumPy
-    np.warnings.filterwarnings("ignore")
     
     Xcenter, Ycenter, holo_filter, ROI_array = spatialFilterinCNT(holo, M, N)
     
@@ -320,6 +321,10 @@ def spatialFilterinCNT(inp, M, N):
 def get_g_and_h_manual(holoCompensate, X, Y, dx, dy, ROI_array, Lambda):
 
     M, N = holoCompensate.shape
+    
+    # Display holoCompensate
+    plt.figure(); plt.imshow(np.angle(holoCompensate), cmap='gray'); plt.title('Compensation after tilting removal');  plt.gca().set_aspect('equal', adjustable='box'); plt.show()
+    
     # creating the new reference wave to eliminate the circular phase factors
     m = abs(ROI_array[2] - ROI_array[0])
     n = abs(ROI_array[3] - ROI_array[1])
@@ -332,15 +337,8 @@ def get_g_and_h_manual(holoCompensate, X, Y, dx, dy, ROI_array, Lambda):
     q = input("Enter the pixel position Y_cent of the center of circular phase map on y axis ")
     f = ((M/2) - int(p))/2
     g = ((N/2) - int(q))/2
-    print("Phase compensation started....")
 
-    phi_spherical = (np.power(X - f, 2) * np.power(dx, 2) / cur) + (np.power(Y - g, 2) * np.power(dy, 2) / cur)
-    phi_spherical = math.pi * phi_spherical / Lambda
-    phi_spherical = np.exp(-1j * phi_spherical)
-
-    phaseCompensate = holoCompensate * phi_spherical
-    phaseCompensate = np.angle(phaseCompensate)
-    return phaseCompensate
+    return f, g
 
 def binarize_compensated_plus1(I):
 

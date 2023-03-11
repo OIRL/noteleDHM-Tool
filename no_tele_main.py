@@ -52,8 +52,11 @@ dy = 6.9*10**(-6)
 
 print ('Phase compensation starts...')
 
-#0: Manual determination of the ROI to filter the DHM hologram and the g and h coordinates of the spherical phase factor for no-tle compensation. 1: Automatic determination of these parameters.
-auto = 1
+'''
+0: Manual determination of the M&N and H&G coordinates for no-tele compensation. 
+1: Automatic determination of these parameters.
+'''
+auto = 0
 
 if auto:
 
@@ -77,23 +80,23 @@ if auto:
 
     # Get the center of the remaining spherical phase factor for the 2nd compensation
     g, h = funs.get_g_and_h(BW)
-
-    #Let's create the new reference wave to eliminate the circular phase factors. 
-    Cy = (N*dy)**2 / (Lambda*(n*2))
-    phi_spherical = funs.phi_spherical_C(Cy, g, h, dx, X, Y, Lambda)
-    phase_mask = np.exp((-1j)*phi_spherical)
-
-    #Let's apply the second (quadratic) compensation according to Kemper
-    corrected_image = holoCompensate * phase_mask
     
 else: 
 
     #Compensating the tilting angle first (Manual)
-    holoCompensate, ROI_array = funs.filter_center_plus1_manual(holo,m,n,Lambda,X,Y,dx,dy,k)
+    holoCompensate, ROI_array = funs.filter_center_plus1_manual(holo,Lambda,X,Y,dx,dy,k)
 
     # Get the center of the remaining spherical phase factor for the 2nd compensation manually
-    corrected_image = funs.get_g_and_h_manual(holoCompensate, X, Y, dx, dy, ROI_array, Lambda)
+    g, h = funs.get_g_and_h_manual(holoCompensate, X, Y, dx, dy, ROI_array, Lambda)
 
+#Let's create the new reference wave to eliminate the circular phase factors. 
+Cy = (N*dy)**2 / (Lambda*(n*2))
+phi_spherical = funs.phi_spherical_C(Cy, g, h, dx, X, Y, Lambda)
+phase_mask = np.exp((-1j)*phi_spherical)
+
+#Let's apply the second (quadratic) compensation according to Kemper
+corrected_image = holoCompensate * phase_mask
+    
 plt.figure(); plt.imshow(np.angle(corrected_image), cmap='gray'); plt.title('Non-optimized compensated image'); 
 plt.gca().set_aspect('equal', adjustable='box'); plt.show()
 
@@ -107,7 +110,7 @@ np.random.seed(0)
 #Different available optimization methods
 alg_array = ["FMC","FMU","FSO","SA","PTS","GA","PS","GA+PS", "BRUTE"]
 #0: FMC 1: FMU 2: FSO 3: SA 4: PTS 5: GA 6: PS 7: GA+PS 8: BRUTE  (See documentation for further details)
-i = 6; #Select method as desired
+i = 5; #Select method as desired
 alg = alg_array[i]
 
 #Two available const functions
