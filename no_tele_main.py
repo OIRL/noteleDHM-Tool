@@ -33,9 +33,9 @@ The main code starts here
 #["4cm_20x_bigcakes.tiff", "-4cm_20x_star.tiff", "4cm_20x_usaf.tiff", "RBCnotele50x.tiff"]
 
 #Loading image file (hologram) to process
-user_input = input("Please enter the name of the hologram file to compensate. Sample input options: \n 4cm_20x_bigcakes.tiff \n -4cm_20x_star.tiff \n 4cm_20x_usaf.tiff \n RBCnotele50x.tiff \n")
+user_input = '4cm_20x_bigcakes.tiff'
 filename = 'data/' + user_input
-print ('Non-telecentric hologram: ', filename)
+print ('Non-telecentric DHM hologram: ', filename)
 
 vargin = 0.5 #Scalling factor of the input images
 holo, M, N, X, Y = funs.holo_read(filename, vargin)
@@ -43,30 +43,12 @@ holo, M, N, X, Y = funs.holo_read(filename, vargin)
 plt.figure(); plt.imshow(holo, cmap='gray'); plt.title('Hologram'); 
 plt.gca().set_aspect('equal', adjustable='box'); plt.show()
 
-#Variables and flags for hologram reconstruction
+#Variables and flags for hologram reconstruction (Default variables, change accordingly)
 #Lambda = 532*10**(-9)
-user_input = input("Please enter illumination wavelength in nanometers (Press enter for default): ")
-if len(user_input.strip()) == 0:
-    Lambda = 633*10**(-9)
-else:
-    Lambda = float(user_input)*10**(-9)
-print('Lambda: ', Lambda)
-
+Lambda = 633*10**(-9)
 k = 2*np.pi/Lambda
-
-user_input = input("Please enter pixel width in micrometers (Press Enter for default): ")
-if len(user_input.strip()) == 0:
-    dx = 6.9*10**(-6)
-else:
-    dx = float(user_input)*10**(-6)
-print('dx : ', dx)
-
-user_input = input("Please enter pixel height in micrometers (Press Enter for default): ")
-if len(user_input.strip()) == 0:
-    dy = 6.9*10**(-6)
-else:
-    dy = float(user_input)*10**(-6)
-print('dy : ', dy)
+dx = 6.9*10**(-6)
+dy = 6.9*10**(-6)
 
 print ('Phase compensation starts...')
 
@@ -98,7 +80,7 @@ phase_mask = np.exp((-1j)*phi_spherical)
 
 #Let's apply the second (quadratic) compensation according to Kemper
 corrected_image = holoCompensate * phase_mask
-plt.figure(); plt.imshow(np.angle(corrected_image), cmap='gray'); plt.title('Auto Corrected image'); 
+plt.figure(); plt.imshow(np.angle(corrected_image), cmap='gray'); plt.title('Non-optimized compensated image'); 
 plt.gca().set_aspect('equal', adjustable='box'); plt.show()
 
 '''
@@ -110,21 +92,15 @@ np.random.seed(0)
 
 #Different available optimization methods
 alg_array = ["FMC","FMU","FSO","SA","PTS","GA","PS","GA+PS", "BRUTE"]
-i = 0; 
-
-user_input = input("Please enter the optimization method to fine tune the phase compensation. Available options (see documentation for more details): \n 0: FMC \n 1: FMU \n 2: FSO \n 3: SA \n 4: PTS \n 5: GA \n 6: PS \n 7: GA+PS \n 8: BRUTE \n")
-i = int(user_input)
-print ('Selectec optimization method: ', alg_array[i])
-
+#0: FMC 1: FMU 2: FSO 3: SA 4: PTS 5: GA 6: PS 7: GA+PS 8: BRUTE  (See documentation for further details)
+i = 6; #Select method as desired
 alg = alg_array[i]
 
 #Two available const functions
 cost_fun = ['BIN cost function','STD cost function']
-#cost = 1 # 0 - BIN -- 1 - SD
-user_input = input("Please enter the cost function to to minimize. Available options (see documentation for more details): \n 0: BIN \n 1: SD \n")
-i = int(user_input)
-cost = i
-print ('Selectec cost function: ', cost_fun[i])
+#cost = 1 # 0 - BIN -- 1 - SD (See documentation for further details)
+cost = 0 
+print ('Selectec cost function: ', cost_fun[cost])
 
 # Define the function phi_spherical_C for the optimization (it's the same used before, but built for optimization)
 phi_spherical_C = lambda C: (np.pi / (C * Lambda)) * ((X - (g + 1))**2 + (Y - (h + 1))**2) * (dx**2)
@@ -135,7 +111,7 @@ if cost == 0:
 elif cost == 1:
     minfunc = lambda t: funs.std_CF_noTele_BAR_1d(phi_spherical_C, t, holoCompensate, M, N)
   
-#Determination of the optimal parameter (C -curvature) for the accurate phase compensation of no tele DHM holograms.
+#Determination (minimization) of the optimal parameter (C -curvature) for the accurate phase compensation of no tele DHM holograms.
 
 # Define the lower and upper bounds of the initial population range (Warning: Modifying these settings may cause unexpected behavior. Proceed with caution)
 lb = -0.5
