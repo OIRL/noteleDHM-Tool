@@ -245,6 +245,104 @@ def filter_center_plus1(FT_holo, plus_coor, m, n, Lambda, X, Y, dx, dy, k):
     # Return the compensated hologram
     return holoCompensate
 
+def filter_center_plus1_manual(holo, Lambda, X, Y, dx, dy, k):
+
+    '''
+    Variables:
+    holo: numpy array with hologram data to be processed
+    Lambda: float variable indicating the illumination wavelength
+    X and Y: are two-dimensional numpy arrays of integers with shapes (N, M), where N and M are the dimensions of the mesh.
+    dx and dy: float varaibles indicating the pixel pitches along the x- and y-directions.
+    k: float variable indicating the wavenumber.
+    '''
+    
+    # Find the shape of the FT_holo array
+    M, N = holo.shape
+    # Initialize a filter array of zeros with the same shape as FT_holo
+    Filter = np.zeros((M, N))
+    # Ignore warnings from NumPy
+    np.warnings.filterwarnings("ignore")
+    
+    Xcenter, Ycenter, holo_filter, ROI_array = spatialFilterinCNT(holo, M, N)
+    
+    # Calculate the angles ThetaXM and ThetaYM
+    ThetaXM = np.arcsin((M/2 - Xcenter) * Lambda / (M * dx))
+    ThetaYM = np.arcsin((N/2 - Ycenter) * Lambda / (N * dy))
+    # Calculate the reference array
+    Reference = np.exp(1j * k * (np.sin(ThetaXM) * X * dx + np.sin(ThetaYM) * Y * dy))
+
+    # Multiply the inverted Fourier transform by the reference array
+    holoCompensate = holo_filter * Reference
+    # Return the compensated hologram
+    return holoCompensate, ROI_array
+
+# Spatial filtering process - manual selection for CNT
+def spatialFilterinCNT(inp, M, N):
+    ROI_array = np.zeros(4)
+    holoFT = np.float32(inp)  # convertion of data to float
+    fft_holo = cv2.dft(holoFT, flags=cv2.DFT_COMPLEX_OUTPUT)  # FFT of hologram
+    fft_holo = np.fft.fftshift(fft_holo)
+    fft_holo_image = 20 * np.log(cv2.magnitude(fft_holo[:, :, 0], fft_holo[:, :, 1]))  # logaritm scale FFT
+    minVal = np.amin(np.abs(fft_holo_image))
+    maxVal = np.amax(np.abs(fft_holo_image))
+    fft_holo_image = cv2.convertScaleAbs(fft_holo_image, alpha=255.0 / (maxVal - minVal),
+                                         beta=-minVal * 255.0 / (maxVal - minVal))
+
+    ROI = cv2.selectROI(fft_holo_image, fromCenter=True)  # module to  ROI
+    # imCrop = fft_holo_image[int(ROI[1]):int(ROI[1] + ROI[3]), int(ROI[0]):int(ROI[0] + ROI[2])]
+    x1_ROI = int(ROI[1])
+    y1_ROI = int(ROI[0])
+    x2_ROI = int(ROI[1] + ROI[3])
+    y2_ROI = int(ROI[0] + ROI[2])
+    ROI_array[0] = x1_ROI
+    ROI_array[1] = y1_ROI
+    ROI_array[2] = x2_ROI
+    ROI_array[3] = y2_ROI
+
+    # computing the center of the rectangle mask
+    Ycenter = x1_ROI + (x2_ROI - x1_ROI)/2
+    Xcenter = y1_ROI + (y2_ROI - y1_ROI)/2
+
+    holo_filter = np.zeros((M, N, 2))
+    holo_filter[x1_ROI:x2_ROI, y1_ROI: y2_ROI] = 1
+    holo_filter = holo_filter * fft_holo
+    holo_filter = np.fft.ifftshift(holo_filter)
+    holo_filter = cv2.idft(holo_filter, flags=cv2.DFT_INVERSE)
+
+    holo_filter_real = holo_filter[:, :, 0]
+    holo_filter_imag = holo_filter[:, :, 1]
+    holo_filter = np.zeros((M, N), complex)
+    for p in range(M):
+        for q in range(N):
+            holo_filter[p, q] = complex(holo_filter_real[p, q], holo_filter_imag[p, q])
+
+    return Xcenter, Ycenter, holo_filter, ROI_array
+
+def get_g_and_h_manual(holoCompensate, X, Y, dx, dy, ROI_array, Lambda):
+
+    M, N = holoCompensate.shape
+    # creating the new reference wave to eliminate the circular phase factors
+    m = abs(ROI_array[2] - ROI_array[0])
+    n = abs(ROI_array[3] - ROI_array[1])
+    Cx = np.power((M * dx), 2)/(Lambda * m)
+    Cy = np.power((N * dy), 2)/(Lambda * n)
+    cur = (Cx + Cy)/2
+
+    print("Carefully determine the center of the circular phase factor in the Binarized Image...")
+    p = input("Enter the pixel position X_cent of the center of circular phase map on x axis ")
+    q = input("Enter the pixel position Y_cent of the center of circular phase map on y axis ")
+    f = ((M/2) - int(p))/2
+    g = ((N/2) - int(q))/2
+    print("Phase compensation started....")
+
+    phi_spherical = (np.power(X - f, 2) * np.power(dx, 2) / cur) + (np.power(Y - g, 2) * np.power(dy, 2) / cur)
+    phi_spherical = math.pi * phi_spherical / Lambda
+    phi_spherical = np.exp(-1j * phi_spherical)
+
+    phaseCompensate = holoCompensate * phi_spherical
+    phaseCompensate = np.angle(phaseCompensate)
+    return phaseCompensate
+
 def binarize_compensated_plus1(I):
 
     '''

@@ -52,34 +52,47 @@ dy = 6.9*10**(-6)
 
 print ('Phase compensation starts...')
 
-#Let's go to the spatial frequency domain
-FT_holo = funs.FT(holo);
+auto = 1
 
-#Let's threshold that FT
-BW = funs.threshold_FT(FT_holo, M, N)
+if auto:
 
-#Get the +1 D.O. term region and coordinates
-#start = timer()	#Start to count time
-plus_coor, m, n, p, q = funs.get_plus1(BW)
-#print("Processing time get_plus1:", timer()-start) #Time for get_plus1 execution
+    #Let's go to the spatial frequency domain
+    FT_holo = funs.FT(holo);
 
-#Compensating the tilting angle first
-off = 0 #some kind of offset
-holoCompensate = funs.filter_center_plus1(FT_holo,plus_coor,m-off,n-off,Lambda,X,Y,dx,dy,k)
+    #Let's threshold that FT
+    BW = funs.threshold_FT(FT_holo, M, N)
 
-# Binarized Spherical Aberration
-BW = funs.binarize_compensated_plus1(holoCompensate)
+    #Get the +1 D.O. term region and coordinates
+    #start = timer()	#Start to count time
+    plus_coor, m, n, p, q = funs.get_plus1(BW)
+    #print("Processing time get_plus1:", timer()-start) #Time for get_plus1 execution
 
-# Get the center of the remaining spherical phase factor for the 2nd compensation
-g, h = funs.get_g_and_h(BW)
+    #Compensating the tilting angle first
+    off = 0 #some kind of offset
+    holoCompensate = funs.filter_center_plus1(FT_holo,plus_coor,m-off,n-off,Lambda,X,Y,dx,dy,k)
 
-#Let's create the new reference wave to eliminate the circular phase factors. 
-Cy = (N*dy)**2 / (Lambda*(n*2))
-phi_spherical = funs.phi_spherical_C(Cy, g, h, dx, X, Y, Lambda)
-phase_mask = np.exp((-1j)*phi_spherical)
+    # Binarized Spherical Aberration
+    BW = funs.binarize_compensated_plus1(holoCompensate)
 
-#Let's apply the second (quadratic) compensation according to Kemper
-corrected_image = holoCompensate * phase_mask
+    # Get the center of the remaining spherical phase factor for the 2nd compensation
+    g, h = funs.get_g_and_h(BW)
+
+    #Let's create the new reference wave to eliminate the circular phase factors. 
+    Cy = (N*dy)**2 / (Lambda*(n*2))
+    phi_spherical = funs.phi_spherical_C(Cy, g, h, dx, X, Y, Lambda)
+    phase_mask = np.exp((-1j)*phi_spherical)
+
+    #Let's apply the second (quadratic) compensation according to Kemper
+    corrected_image = holoCompensate * phase_mask
+    
+else: 
+
+    #Compensating the tilting angle first (Manual)
+    holoCompensate, ROI_array = funs.filter_center_plus1_manual(holo,m,n,Lambda,X,Y,dx,dy,k)
+
+    # Get the center of the remaining spherical phase factor for the 2nd compensation manually
+    corrected_image = funs.get_g_and_h_manual(holoCompensate, X, Y, dx, dy, ROI_array, Lambda)
+
 plt.figure(); plt.imshow(np.angle(corrected_image), cmap='gray'); plt.title('Non-optimized compensated image'); 
 plt.gca().set_aspect('equal', adjustable='box'); plt.show()
 
