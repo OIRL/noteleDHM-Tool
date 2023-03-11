@@ -224,8 +224,7 @@ def filter_center_plus1(FT_holo, plus_coor, m, n, Lambda, X, Y, dx, dy, k):
     M, N = FT_holo.shape
     # Initialize a filter array of zeros with the same shape as FT_holo
     Filter = np.zeros((M, N))
-    # Ignore warnings from NumPy
-    np.warnings.filterwarnings("ignore")
+
     # Set the values in the filter array within the specified range to 1
     Filter[int(plus_coor[0] - n):int(plus_coor[0] + n), int(plus_coor[1] - m):int(plus_coor[1] + m)] = 1
     # Apply the filter to the FT_holo array

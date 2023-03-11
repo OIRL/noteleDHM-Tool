@@ -52,6 +52,7 @@ dy = 6.9*10**(-6)
 
 print ('Phase compensation starts...')
 
+#0: Manual determination of the ROI to filter the DHM hologram and the g and h coordinates of the spherical phase factor for no-tle compensation. 1: Automatic determination of these parameters.
 auto = 1
 
 if auto:
