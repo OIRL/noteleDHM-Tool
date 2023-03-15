@@ -30,14 +30,15 @@ The main code starts here
 '''
 
 #Different image files to process (no-tele holograms). Sample input holograms located in 'data/'
-#["4cm_20x_bigcakes.tiff", "-4cm_20x_star.tiff", "4cm_20x_usaf.tiff", "RBCnotele50x.tiff"]
+#["4cm_20x_bigcakes.tiff", "-4cm_20x_star.tiff", "4cm_20x_usaf.tiff", "RBCnotele50x.tiff", "RBCnotele50x_square.tiff"]
+#["4cm_20x_usaf_square.tiff"]
 
 #Loading image file (hologram) to process
-user_input = '4cm_20x_bigcakes.tiff'
+user_input = '4cm_20x_usaf_square.tiff'
 filename = 'data/' + user_input
 print ('Non-telecentric DHM hologram: ', filename)
 
-vargin = 0.5 #Scalling factor of the input images
+vargin = 1 #Scalling factor of the input images
 holo, M, N, X, Y = funs.holo_read(filename, vargin)
 
 plt.figure(); plt.imshow(holo, cmap='gray'); plt.title('Hologram'); 
@@ -84,21 +85,42 @@ if auto:
 else: 
 
     #Compensating the tilting angle first (Manual)
-    holoCompensate, ROI_array = funs.filter_center_plus1_manual(holo,Lambda,X,Y,dx,dy,k)
-
+    #holoCompensate, m, n = funs.filter_center_plus1_manual(holo,Lambda,X,Y,dx,dy,k)
+    
+    start = timer()	#Start to count time
+    
+    # Numerical compensation using the CNT approach
+    output = funs.CNT(holo, Lambda, dx, dy, spatialFilter='sfmr')
+    plt.figure(); plt.imshow(np.angle(output), cmap='gray'); plt.title('Nested loops optimized compensated image'); 
+    plt.gca().set_aspect('equal', adjustable='box'); plt.show()
+    
+    print("Processing time CNT:", timer()-start) #Time for CNT execution    
+    
     # Get the center of the remaining spherical phase factor for the 2nd compensation manually
-    g, h = funs.get_g_and_h_manual(holoCompensate, X, Y, dx, dy, ROI_array, Lambda)
+    #g, h = funs.get_g_and_h_manual(holoCompensate)
 
 #Let's create the new reference wave to eliminate the circular phase factors. 
-Cy = (N*dy)**2 / (Lambda*(n*2))
-phi_spherical = funs.phi_spherical_C(Cy, g, h, dx, X, Y, Lambda)
+Cx = np.power((M * dx), 2)/(Lambda * m)
+Cy = np.power((N * dy), 2)/(Lambda * n)
+cur = (Cx + Cy)/2
+
+#Let's built the spherical phase factor for compensation
+phi_spherical = funs.phi_spherical_C(cur, g, h, dx, X, Y, Lambda)
 phase_mask = np.exp((-1j)*phi_spherical)
+phase_mask_2 = np.exp((1j)*phi_spherical) #Negative curvature
 
 #Let's apply the second (quadratic) compensation according to Kemper
 corrected_image = holoCompensate * phase_mask
     
 plt.figure(); plt.imshow(np.angle(corrected_image), cmap='gray'); plt.title('Non-optimized compensated image'); 
 plt.gca().set_aspect('equal', adjustable='box'); plt.show()
+
+#Let's apply the second (quadratic) compensation according to Kemper (negative phase factor)
+corrected_image = holoCompensate * phase_mask_2
+    
+plt.figure(); plt.imshow(np.angle(corrected_image), cmap='gray'); plt.title('Non-optimized compensated image (Negative curvature)'); 
+plt.gca().set_aspect('equal', adjustable='box'); plt.show()
+
 
 '''
 Up to this point the phase compensation for no telecentric DHM holograms is finished according to Kemper
@@ -133,10 +155,10 @@ elif cost == 1:
 # Define the lower and upper bounds of the initial population range (Warning: Modifying these settings may cause unexpected behavior. Proceed with caution)
 lb = -0.5
 ub = 0.5
-lb = Cy + Cy * lb
-ub = Cy + Cy * ub
+lb = cur + cur * lb
+ub = cur + cur * ub
 
-print ('Cy :', Cy)
+print ('cur :', cur)
 print ('lb and ub: ', lb, ub)
 
 # Minimize the cost function using the selected algorithm
@@ -148,19 +170,19 @@ elif alg == "GA":
     Cy_opt = funs.genetic_algorithm(minfunc, lb, ub)
 elif alg == "PS":
     print ('Running the pattern search algorithm with the', cost_fun[cost])
-    Cy_opt = funs.pattern_search(minfunc, Cy)
+    Cy_opt = funs.pattern_search(minfunc, cur)
 elif alg == "FMC": #fmincon via 'NonlinearConstraint'
     print ('Running the NonlinearConstraint (fmincon) algorithm with the', cost_fun[cost])
-    Cy_opt = funs.fmincon(minfunc, lb, ub, Cy)
+    Cy_opt = funs.fmincon(minfunc, lb, ub, cur)
 elif alg == "FMU":  #fminunc via fmin_ncg
     print ('Running the fmin_ncg (fminunc) algorithm with the', cost_fun[cost])
-    Cy_opt = funs.fminunc(minfunc, Cy)
+    Cy_opt = funs.fminunc(minfunc, cur)
 elif alg == "FSO": #fsolve
     print ('Running the function solver (fsolver) algorithm with the', cost_fun[cost])
-    Cy_opt = funs.fsolver(minfunc, Cy)
+    Cy_opt = funs.fsolver(minfunc, cur)
 elif alg == "PTS": #paretosearch
     print ('Running the pareto search strategy with the', cost_fun[cost])
-    Cy_opt = funs.pareto_search(minfunc, Cy)
+    Cy_opt = funs.pareto_search(minfunc, cur)
 elif alg == "PSW": #particleswarm
     print ('Running the particle swarm optimization with the', cost_fun[cost])
     Cy_opt = funs.particleswarm(minfunc, lb, ub)
