@@ -34,7 +34,7 @@ The main code starts here
 #["4cm_20x_usaf_square.tiff"]
 
 #Loading image file (hologram) to process
-user_input = '4cm_20x_usaf_square.tiff'
+user_input = '-4cm_20x_star.tiff'
 filename = 'data/' + user_input
 print ('Non-telecentric DHM hologram: ', filename)
 

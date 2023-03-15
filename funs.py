@@ -419,9 +419,9 @@ def CNT(inp, wavelength, dx, dy, x1=None, x2=None, y1=None, y2=None, spatialFilt
     minVal = np.amin(phase_c)
     maxVal = np.amax(phase_c)
     phase_normalized = (phase_c - minVal) / (maxVal - minVal)
-    binary_phase = (phase_normalized > 0.8)
-    plt.figure(); plt.imshow(binary_phase, cmap='gray'); plt.title('Binarized phase'); 
-    plt.gca().set_aspect('equal', adjustable='box'); plt.show()
+    binary_phase = (phase_normalized > 0.5)
+    #plt.figure(); plt.imshow(binary_phase, cmap='gray'); plt.title('Binarized phase'); 
+    #plt.gca().set_aspect('equal', adjustable='box'); plt.show()
 
     # creating the new reference wave to eliminate the circular phase factors
     m = abs(ROI_array[2] - ROI_array[0])
@@ -430,23 +430,40 @@ def CNT(inp, wavelength, dx, dy, x1=None, x2=None, y1=None, y2=None, spatialFilt
     Cy = np.power((N * dy), 2)/(wavelength * n)
     cur = (Cx + Cy)/2
 
+    '''
     print("Carefully determine the center of the circular phase factor in the Binarized Image...")
     p = input("Enter the pixel position X_cent of the center of circular phase map on x axis ")
     q = input("Enter the pixel position Y_cent of the center of circular phase map on y axis ")
     f = ((M/2) - int(p))/2
     g = ((N/2) - int(q))/2
     print("Phase compensation started....")
+    '''
+    
+    print ("Select the center of the spherical phase factor and press 'esc'")
+    cv2.namedWindow('image')
+    cv2.setMouseCallback('image', mouse_callback)
+
+    cv2.imshow('image', phase_normalized)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+    
+    # Get the mouse click coordinates from the global variables
+    p, q = mouse_x, mouse_y
+    
+    f = ((M/2) - int(p))/2
+    g = ((N/2) - int(q))/2
 
     cont = 0
     sum_max = 0
-    s = 100
-    step = 50
+    s = 20
+    step = 2
     perc = 40/100
 
     arrayCurvature = np.arange(cur - (cur*perc), cur + (cur*perc), perc/6)
     arrayXcenter = np.arange(f - s, f + s, step)
     arrayYcenter = np.arange(g - s, g + s, step)
     for curTemp in arrayCurvature:
+        print (curTemp)
         for fTemp in arrayXcenter:
             for gTemp in arrayYcenter:
                 cont = cont + 1
@@ -473,7 +490,7 @@ def CNT(inp, wavelength, dx, dy, x1=None, x2=None, y1=None, y2=None, spatialFilt
                     cur_out = curTemp
                     sum_max = sum
 
-    #print("after first search ", f_out, g_out, cur_out)
+    print("After first coarse search ", f_out, g_out, cur_out)
 
     cont = 0
     sum_max = 0
@@ -482,10 +499,11 @@ def CNT(inp, wavelength, dx, dy, x1=None, x2=None, y1=None, y2=None, spatialFilt
     perc = 0.1
     arrayXcenter = np.arange(f_out - s, f_out + s, step)
     arrayYcenter = np.arange(g_out - s, g_out + s, step)
-    arrayCurvature = np.arange(cur_out - (cur_out*perc), cur_out + (cur_out*perc), 0.01)
+    arrayCurvature = np.arange(cur_out - (cur_out*perc), cur_out + (cur_out*perc), 0.1)
     #arrayCurvature = np.arange(1.003, 1.03, 0.01)
 
     for curTemp in arrayCurvature:
+        print (curTemp)
         for fTemp in arrayXcenter:
             for gTemp in arrayYcenter:
                 #print(curTemp)
@@ -521,7 +539,7 @@ def CNT(inp, wavelength, dx, dy, x1=None, x2=None, y1=None, y2=None, spatialFilt
     phaseCompensate = comp_phase * phi_spherical
 
     
-    #print("after fine compensation", f_out, g_out, cur_out)
+    print("After fine compensation", f_out, g_out, cur_out)
 
     print("Phase compensation finished.")
 
