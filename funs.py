@@ -333,6 +333,7 @@ mouse_x = 1
 mouse_y = 1
 
 def mouse_callback(event, x, y, flags, param):
+    global mouse_x, mouse_y
     if event == cv2.EVENT_LBUTTONUP:
         mouse_x, mouse_y = x, y
         print('Pixel coordinates selected:', x, y)
@@ -384,21 +385,11 @@ def CNT(inp, wavelength, dx, dy, x1=None, x2=None, y1=None, y2=None, spatialFilt
     x = np.arange(0, N, 1)  # array x
     y = np.arange(0, M, 1)  # array y
     X, Y = np.meshgrid(x - (N / 2), y - (M / 2), indexing='xy')  # meshgrid XY
+    
 
     # The spatial filtering process is executed
     print("Spatial filtering process started.....")
-    if x1 is None and x2 is None and y1 is None and y2 is None:
-        if spatialFilter == 'sfmr':
-            Xcenter, Ycenter, holo_filter, ROI_array = spatialFilterinCNT(inp, M, N)
-        else:
-            print("Please use the sfmr option for the spatial filter or insert the values for  (x1,y1,x2,y2) if the spatial filter option is ‘sfr’  ")
-            sys.exit()
-    else:
-        if spatialFilter == 'sfr':
-            Xcenter, Ycenter, holo_filter, ROI_array = spatialFilterinCNT_II(inp, M, N, x1, y1, x2, y2)
-        else:
-            print("Please use the sfr option for the spatial filter if (x1,y1,x2,y2) are used as inputs or remove the (x1,y1,x2,y2) as inputs of the CNT function")
-            sys.exit()
+    Xcenter, Ycenter, holo_filter, ROI_array = spatialFilterinCNT(inp, M, N)
     print("Spatial filtering process finished.")
 
     # Fourier transform to the hologram filtered
@@ -411,7 +402,7 @@ def CNT(inp, wavelength, dx, dy, x1=None, x2=None, y1=None, y2=None, spatialFilt
     ThetaYM = math.asin((M / 2 - Ycenter) * wavelength / (N * dy))
     reference = np.exp(1j * k * (math.sin(ThetaXM) * X * dx + math.sin(ThetaYM) * Y * dy))
 
-    # First compensation
+    # First compensation (tilting angle compensation)
     comp_phase = holo_filter * reference
     phase_c = np.angle(comp_phase)
 
@@ -423,21 +414,12 @@ def CNT(inp, wavelength, dx, dy, x1=None, x2=None, y1=None, y2=None, spatialFilt
     #plt.figure(); plt.imshow(binary_phase, cmap='gray'); plt.title('Binarized phase'); 
     #plt.gca().set_aspect('equal', adjustable='box'); plt.show()
 
-    # creating the new reference wave to eliminate the circular phase factors
+    # creating the new reference wave to eliminate the circular phase factors (second phase compensation)
     m = abs(ROI_array[2] - ROI_array[0])
     n = abs(ROI_array[3] - ROI_array[1])
     Cx = np.power((M * dx), 2)/(wavelength * m)
     Cy = np.power((N * dy), 2)/(wavelength * n)
     cur = (Cx + Cy)/2
-
-    '''
-    print("Carefully determine the center of the circular phase factor in the Binarized Image...")
-    p = input("Enter the pixel position X_cent of the center of circular phase map on x axis ")
-    q = input("Enter the pixel position Y_cent of the center of circular phase map on y axis ")
-    f = ((M/2) - int(p))/2
-    g = ((N/2) - int(q))/2
-    print("Phase compensation started....")
-    '''
     
     print ("Select the center of the spherical phase factor and press 'esc'")
     cv2.namedWindow('image')
@@ -450,13 +432,15 @@ def CNT(inp, wavelength, dx, dy, x1=None, x2=None, y1=None, y2=None, spatialFilt
     # Get the mouse click coordinates from the global variables
     p, q = mouse_x, mouse_y
     
+    print ("p & q: ", p, q)
+    
     f = ((M/2) - int(p))/2
     g = ((N/2) - int(q))/2
-
+    
     cont = 0
     sum_max = 0
-    s = 20
-    step = 2
+    s = 100
+    step = 50
     perc = 40/100
 
     arrayCurvature = np.arange(cur - (cur*perc), cur + (cur*perc), perc/6)
@@ -467,14 +451,14 @@ def CNT(inp, wavelength, dx, dy, x1=None, x2=None, y1=None, y2=None, spatialFilt
         for fTemp in arrayXcenter:
             for gTemp in arrayYcenter:
                 cont = cont + 1
-                phi_spherical = (np.power(X - fTemp, 2) * np.power(dx, 2) / curTemp) + (
-                np.power(Y - gTemp, 2) * np.power(dy, 2) / curTemp)
+                phi_spherical = (np.power(X - fTemp, 2) * np.power(dx, 2) / curTemp) + (np.power(Y - gTemp, 2) * np.power(dy, 2) / curTemp)
                 phi_spherical = math.pi * phi_spherical / wavelength
-                phi_spherical = np.exp(-1j * phi_spherical)
-
+                #phi_spherical = np.exp(-1j * phi_spherical)
+                phi_spherical = np.exp(1j * phi_spherical)
+                
                 phaseCompensate = comp_phase * phi_spherical
                 phaseCompensate = np.angle(phaseCompensate)
-                #imageShow(phaseCompensate, 'phaseCompensate')
+                #imageShow(phaseCompensate, 'phaseCompensate')                
 
                 minVal = np.amin(phaseCompensate)
                 maxVal = np.amax(phaseCompensate)
@@ -489,6 +473,24 @@ def CNT(inp, wavelength, dx, dy, x1=None, x2=None, y1=None, y2=None, spatialFilt
                     g_out = gTemp
                     cur_out = curTemp
                     sum_max = sum
+                    
+                    # Create a figure with three subplots
+                    fig, (ax1, ax2, ax3) = plt.subplots(1, 3)
+                
+                    # Plot the first image in the first subplot
+                    ax1.imshow(np.angle(phi_spherical))
+                    ax1.set_title('phi_spherical')
+                
+                    # Plot the second image in the second subplot
+                    ax2.imshow(np.angle(comp_phase))
+                    ax2.set_title('comp_phase')
+                
+                    # Plot the third image in the third subplot
+                    ax3.imshow(phaseCompensate)
+                    ax3.set_title('phaseCompensate')
+                
+                    # Show the figure
+                    plt.show()
 
     print("After first coarse search ", f_out, g_out, cur_out)
 
@@ -499,7 +501,7 @@ def CNT(inp, wavelength, dx, dy, x1=None, x2=None, y1=None, y2=None, spatialFilt
     perc = 0.1
     arrayXcenter = np.arange(f_out - s, f_out + s, step)
     arrayYcenter = np.arange(g_out - s, g_out + s, step)
-    arrayCurvature = np.arange(cur_out - (cur_out*perc), cur_out + (cur_out*perc), 0.1)
+    arrayCurvature = np.arange(cur_out - (cur_out*perc), cur_out + (cur_out*perc), 0.01)
     #arrayCurvature = np.arange(1.003, 1.03, 0.01)
 
     for curTemp in arrayCurvature:
@@ -511,8 +513,9 @@ def CNT(inp, wavelength, dx, dy, x1=None, x2=None, y1=None, y2=None, spatialFilt
                 phi_spherical = (np.power(X - fTemp, 2) * np.power(dx, 2) / curTemp) + (
                     np.power(Y - gTemp, 2) * np.power(dy, 2) / curTemp)
                 phi_spherical = math.pi * phi_spherical / wavelength
-                phi_spherical = np.exp(-1j * phi_spherical)
-
+                #phi_spherical = np.exp(-1j * phi_spherical)
+                phi_spherical = np.exp(1j * phi_spherical)
+                
                 phaseCompensate = comp_phase * phi_spherical
                 phaseCompensate = np.angle(phaseCompensate)
                 #imageShow(phaseCompensate, 'phaseCompensate')
@@ -535,7 +538,7 @@ def CNT(inp, wavelength, dx, dy, x1=None, x2=None, y1=None, y2=None, spatialFilt
     phi_spherical = (np.power(X - f_out, 2) * np.power(dx, 2) / cur_out) + (
             np.power(Y - g_out, 2) * np.power(dy, 2) / cur_out)
     phi_spherical = math.pi * phi_spherical / wavelength
-    phi_spherical = np.exp(-1j * phi_spherical)
+    phi_spherical = np.exp(1j * phi_spherical)
     phaseCompensate = comp_phase * phi_spherical
 
     
