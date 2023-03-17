@@ -9,7 +9,7 @@ in each dimension (dx and dy) and the illumination wavelength (Lambda).
 Dependencies: The code uses functions from the 'funs.py' script.
 
 Date: January 6, 2023
-Last update: March 10, 2023.
+Last update: March 17, 2023.
 
 Authors: Brian Bogue-Jimenez, Carlos Trujillo, and Ana Doblas
 """
@@ -33,7 +33,7 @@ The main code starts here
 #["4cm_20x_bigcakes.tiff", "-4cm_20x_star.tiff", "4cm_20x_usaf.tiff", "RBCnotele50x.tiff"]
 
 #Loading image file (hologram) to process
-user_input = '-4cm_20x_star_small.tiff'
+user_input = '4cm_20x_usaf.tiff'
 filename = 'data/' + user_input
 print ('Non-telecentric DHM hologram: ', filename)
 
@@ -56,7 +56,7 @@ print ('Phase compensation starts...')
 0: Manual determination of the M&N and H&G coordinates for no-tele compensation. 
 1: Automatic determination of these parameters.
 '''
-auto = 0
+auto = 1
 
 if auto:
 
@@ -113,13 +113,13 @@ if auto:
     #Different available optimization methods
     alg_array = ["FMC","FMU","FSO","SA","PTS","GA","PS","GA+PS", "BRUTE"]
     #0: FMC 1: FMU 2: FSO 3: SA 4: PTS 5: GA 6: PS 7: GA+PS 8: BRUTE  (See documentation for further details)
-    i = 5; #Select method as desired
+    i = 7; #Select method as desired
     alg = alg_array[i]
 
     #Two available const functions
     cost_fun = ['BIN cost function','STD cost function']
     #cost = 1 # 0 - BIN -- 1 - SD (See documentation for further details)
-    cost = 0 
+    cost = 1 
     print ('Selected cost function: ', cost_fun[cost])
 
     # Define the function phi_spherical_C for the optimization (it's the same used before, but built for optimization)
