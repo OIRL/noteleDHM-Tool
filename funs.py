@@ -516,6 +516,8 @@ def CNT(inp, wavelength, dx, dy, x1=None, x2=None, y1=None, y2=None, spatialFilt
     else:
         sign = False
         
+    sign = True
+        
     print ("Sign of spherical phase factor: ", sign)
     
     s = 100
