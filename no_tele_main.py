@@ -33,7 +33,7 @@ The main code starts here
 #["4cm_20x_bigcakes.tiff", "-4cm_20x_star.tiff", "4cm_20x_usaf.tiff", "RBCnotele50x.tiff"]
 
 #Loading image file (hologram) to process
-user_input = '4cm_20x_bigcakes.tiff'
+user_input = '-4cm_20x_star_small.tiff'
 filename = 'data/' + user_input
 print ('Non-telecentric DHM hologram: ', filename)
 
@@ -194,8 +194,9 @@ else:
     start = timer()	#Start to count time
     
     # Numerical compensation using the CNT approach from pyDHM
-    output = funs.CNT(holo, Lambda, dx, dy)
+    #output = funs.CNT(holo, Lambda, dx, dy)
+    output = funs.fast_CNT(holo, Lambda, dx, dy)
     plt.figure(); plt.imshow(np.angle(output), cmap='gray'); plt.title('Nested loops optimized compensated image'); 
     plt.gca().set_aspect('equal', adjustable='box'); plt.show()
     
-    print("Processing time CNT:", timer()-start) #Time for CNT execution    
+    print("Processing time CNT (or fastCNT):", timer()-start) #Time for CNT execution    

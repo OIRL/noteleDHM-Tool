@@ -344,29 +344,13 @@ def brute_search(comp_phase, arrayCurvature, arrayXcenter, arrayYcenter, wavelen
     cont = 0
     
     for curTemp in arrayCurvature:
-        print ("... in 'cur': ", curTemp, " going to: ", arrayCurvature[-1])
+        #print ("... in 'cur': ", curTemp, " going to: ", arrayCurvature[-1])
         for fTemp in arrayXcenter:
             for gTemp in arrayYcenter:
                 cont = cont + 1
-                phi_spherical = (np.power(X - fTemp, 2) * np.power(dx, 2) / curTemp) + (np.power(Y - gTemp, 2) * np.power(dy, 2) / curTemp)
-                phi_spherical = math.pi * phi_spherical / wavelength
-                if (sign == True):
-                    phi_spherical = np.exp(1j * phi_spherical)
-                else:
-                    phi_spherical = np.exp(-1j * phi_spherical)
                 
-                phaseCompensate = comp_phase * phi_spherical
-                phaseCompensate = np.angle(phaseCompensate)
-                #imageShow(phaseCompensate, 'phaseCompensate')                
-
-                minVal = np.amin(phaseCompensate)
-                maxVal = np.amax(phaseCompensate)
-                phase_sca = (phaseCompensate - minVal) / (maxVal - minVal)
-                binary_phase = (phase_sca > 0.2)
-                #imageShow(binary_phase, 'phaseCompensate')
-
-                # Applying the summation and thresholding metric
-                sum = np.sum(np.sum(binary_phase))
+                phaseCompensate, phi_spherical, sum = TSM(comp_phase, curTemp, fTemp, gTemp, wavelength, X, Y, dx, dy, sign)
+                
                 if (sum > sum_max):
                     f_out = fTemp
                     g_out = gTemp
@@ -393,7 +377,224 @@ def brute_search(comp_phase, arrayCurvature, arrayXcenter, arrayYcenter, wavelen
                         plt.show()
                     
     return f_out, g_out, cur_out, sum_max
+
+def TSM(comp_phase, curTemp, fTemp, gTemp, wavelength, X, Y, dx, dy, sign):
+    phi_spherical = (np.power(X - fTemp, 2) * np.power(dx, 2) / curTemp) + (np.power(Y - gTemp, 2) * np.power(dy, 2) / curTemp)
+    phi_spherical = math.pi * phi_spherical / wavelength
+    if (sign == True):
+        phi_spherical = np.exp(1j * phi_spherical)
+    else:
+        phi_spherical = np.exp(-1j * phi_spherical)
+                
+    phaseCompensate = comp_phase * phi_spherical
+    phaseCompensate = np.angle(phaseCompensate)
+    
+    minVal = np.amin(phaseCompensate)
+    maxVal = np.amax(phaseCompensate)
+    phase_sca = (phaseCompensate - minVal) / (maxVal - minVal)
+    binary_phase = (phase_sca > 0.2)
+
+    # Applying the summation and thresholding metric
+    sum = np.sum(np.sum(binary_phase))
+
+    return phaseCompensate, phi_spherical, sum                  
                     
+
+def fast_CNT(inp, wavelength, dx, dy):
+    '''
+    # Function rapid compensation of phase maps of image plane off-axis DHM, operating in non-telecentric regimen
+    # Inputs:
+    # inp - The input intensity (captured) hologram
+    # wavelength - Wavelength of the illumination source to register the DHM hologram
+    # dx, dy - Pixel dimensions of the camera sensor used for recording the hologram
+    '''
+
+    #wavelength = wavelength * 0.000001
+    #dx = dx * 0.000001
+    #dy = dy * 0.000001
+
+    # Retrieving the input shape
+    inp = np.array(inp)
+    M, N = inp.shape
+    k = (2 * math.pi) / wavelength
+
+    # Creating a mesh-grid to operate in world coordinates
+    x = np.arange(0, N, 1)  # array x
+    y = np.arange(0, M, 1)  # array y
+    X, Y = np.meshgrid(x - (N / 2), y - (M / 2), indexing='xy')  # meshgrid XY
+    
+
+    # The spatial filtering process is executed
+    print("Spatial filtering process started.....")
+    Xcenter, Ycenter, holo_filter, ROI_array = spatialFilterinCNT(inp, M, N)
+    print("Spatial filtering process finished.")
+
+    # Fourier transform to the hologram filtered
+    ft_holo = FT(holo_filter)
+    #plt.figure(); plt.imshow(np.abs(ft_holo)**2, cmap='gray'); plt.title('FT Filtered holo'); 
+    #plt.gca().set_aspect('equal', adjustable='box'); plt.show()
+
+    # reference wave for the first compensation (global linear compensation)
+    ThetaXM = math.asin((N / 2 - Xcenter) * wavelength / (N * dx))
+    ThetaYM = math.asin((M / 2 - Ycenter) * wavelength / (M * dy))
+    reference = np.exp(1j * k * (math.sin(ThetaXM) * X * dx + math.sin(ThetaYM) * Y * dy))
+
+    # First compensation (tilting angle compensation)
+    comp_phase = holo_filter * reference
+    phase_c = np.angle(comp_phase)
+
+    # show the first compensation
+    minVal = np.amin(phase_c)
+    maxVal = np.amax(phase_c)
+    phase_normalized = (phase_c - minVal) / (maxVal - minVal)
+    binary_phase = (phase_normalized > 0.5)
+    #plt.figure(); plt.imshow(binary_phase, cmap='gray'); plt.title('Binarized phase'); 
+    #plt.gca().set_aspect('equal', adjustable='box'); plt.show()
+
+    # creating the new reference wave to eliminate the circular phase factors (second phase compensation)
+    m = abs(ROI_array[2] - ROI_array[0])
+    n = abs(ROI_array[3] - ROI_array[1])
+    Cx = np.power((M * dx), 2)/(wavelength * m)
+    Cy = np.power((N * dy), 2)/(wavelength * n)
+    cur = (Cx + Cy)/2
+    
+    print ("Select the center of the spherical phase factor and press 'esc'")
+    cv2.namedWindow('image')
+    cv2.setMouseCallback('image', mouse_callback)
+
+    cv2.imshow('image', phase_normalized)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+    
+    # Get the mouse click coordinates from the global variables
+    p, q = mouse_x, mouse_y
+    
+    print ("p & q: ", p, q)
+    
+    f = ((M/2) - int(p))/2
+    g = ((N/2) - int(q))/2
+    
+    #Let's test the sign of the spherical phase factor
+    
+    s = max(M,N)*0.05
+    step = max(M,N)*0.1
+    perc = 0.05
+    arrayCurvature = np.arange(cur - (cur*perc), cur + (cur*perc), perc/2)
+    arrayXcenter = np.arange(f - s, f + s, step)
+    arrayYcenter = np.arange(g - s, g + s, step)
+    
+    sign = True
+    sum_max_True = brute_search(comp_phase, arrayCurvature, arrayXcenter, arrayYcenter, wavelength, X, Y, dx, dy, sign, vis = False)[3]
+    #print (sum_max_True)
+    
+    sign = False
+    sum_max_False = brute_search(comp_phase, arrayCurvature, arrayXcenter, arrayYcenter, wavelength, X, Y, dx, dy, sign, vis = False) [3]
+    #print (sum_max_False)
+    
+    if (sum_max_True > sum_max_False):
+        sign = True
+    else:
+        sign = False
+        
+    #sign = True
+        
+    print ("Sign of spherical phase factor: ", sign)
+    
+    step_f = max(M,N)*0.1
+    step_g = step_f
+    step_cur = 0.6*cur
+    
+    current_point = (cur, f, g)
+    
+    phaseCompensate, phi_spherical, current_value = TSM(comp_phase, current_point[0], current_point[1], current_point[2], wavelength, X, Y, dx, dy, sign)
+    
+    # Create a figure with three subplots
+    fig, (ax1, ax2, ax3) = plt.subplots(1, 3)
+                
+    # Plot the first image in the first subplot
+    ax1.imshow(np.angle(phi_spherical))
+    ax1.set_title('phi_spherical')
+                
+    # Plot the second image in the second subplot
+    ax2.imshow(np.angle(comp_phase))
+    ax2.set_title('comp_phase')
+                
+    # Plot the third image in the third subplot
+    ax3.imshow(phaseCompensate)
+    ax3.set_title('phaseCompensate')
+    
+    # Show the figure
+    plt.show()
+
+    while True:
+        
+        neighbors = []
+        for dex in [-2, -1, 0, 1, 2]:
+            for dey in [-2, -1, 0, 1, 2]:
+                for dez in [-2, -1, 0, 1, 2]:
+                    if dex == dey == dez == 0:
+                        continue
+                    neighbor = (current_point[0] + dez*step_cur, current_point[1] + dex*step_f, current_point[2] + dey*step_g)
+                    neighbors.append(neighbor)
+        #print ("current_point", current_point)
+        #print ("neighbors", neighbors)
+        optimal_neighbor = current_point
+        optimal_value = current_value
+        for neighbor in neighbors:
+            #print ("neighbor: ",neighbor)
+            phaseCompensate, phi_spherical, neighbor_value = TSM(comp_phase, neighbor[0], neighbor[1], neighbor[2], wavelength, X, Y, dx, dy, sign)
+            
+            if neighbor_value > optimal_value:
+                optimal_neighbor = neighbor
+                optimal_value = neighbor_value
+                print ("Best neighbor found! ", optimal_value)
+                # Create a figure with three subplots
+                fig, (ax1, ax2, ax3) = plt.subplots(1, 3)
+                
+                # Plot the first image in the first subplot
+                ax1.imshow(np.angle(phi_spherical))
+                ax1.set_title('phi_spherical')
+                
+                # Plot the second image in the second subplot
+                ax2.imshow(np.angle(comp_phase))
+                ax2.set_title('comp_phase')
+                
+                # Plot the third image in the third subplot
+                ax3.imshow(phaseCompensate)
+                ax3.set_title('phaseCompensate')
+                
+                # Show the figure
+                plt.show()
+        
+        #if np.abs(optimal_value - current_value) < optimal_value*0.00005:
+        #    break
+        #el
+        if optimal_value > current_value:
+            current_point = optimal_neighbor
+            current_value = optimal_value
+        else:
+            break
+        
+        step_f = step_f*0.5
+        step_g = step_f
+        step_cur = step_cur*0.5
+    
+    #current_point #(cur, f, g)
+    
+    phi_spherical = (np.power(X - current_point[1], 2) * np.power(dx, 2) / current_point[0]) + (np.power(Y - current_point[2], 2) * np.power(dy, 2) / current_point[0])
+    phi_spherical = math.pi * phi_spherical / wavelength
+    
+    if (sign == True):
+        phi_spherical = np.exp(1j * phi_spherical)
+    else:
+        phi_spherical = np.exp(-1j * phi_spherical)
+
+    phaseCompensate = comp_phase * phi_spherical
+
+    print("Phase compensation finished.")
+
+    return phaseCompensate
+
 def CNT(inp, wavelength, dx, dy):
     '''
     # Function to compensate phase maps of image plane off-axis DHM, operating in non-telecentric regimen
@@ -496,7 +697,7 @@ def CNT(inp, wavelength, dx, dy):
     
     s = max(M,N)*0.1
     step = s/2
-    perc = 0.6
+    perc = 0.6 #60 percent of search range for the curvature (change at will)
 
     arrayCurvature = np.arange(cur - (cur*perc), cur + (cur*perc), perc/6)
     arrayXcenter = np.arange(f - s, f + s, step)
