@@ -358,6 +358,63 @@ def get_g_and_h_manual(holoCompensate):
 
     return g, h
 
+def brute_search(comp_phase, arrayCurvature, arrayXcenter, arrayYcenter, wavelength, X, Y, dx, dy, sign, vis):
+    
+    sum_max = 0
+    cont = 0
+    
+    for curTemp in arrayCurvature:
+        print ("... in 'cur': ", curTemp, " going to: ", arrayCurvature[-1])
+        for fTemp in arrayXcenter:
+            for gTemp in arrayYcenter:
+                cont = cont + 1
+                phi_spherical = (np.power(X - fTemp, 2) * np.power(dx, 2) / curTemp) + (np.power(Y - gTemp, 2) * np.power(dy, 2) / curTemp)
+                phi_spherical = math.pi * phi_spherical / wavelength
+                if (sign == True):
+                    phi_spherical = np.exp(1j * phi_spherical)
+                else:
+                    phi_spherical = np.exp(-1j * phi_spherical)
+                
+                phaseCompensate = comp_phase * phi_spherical
+                phaseCompensate = np.angle(phaseCompensate)
+                #imageShow(phaseCompensate, 'phaseCompensate')                
+
+                minVal = np.amin(phaseCompensate)
+                maxVal = np.amax(phaseCompensate)
+                phase_sca = (phaseCompensate - minVal) / (maxVal - minVal)
+                binary_phase = (phase_sca > 0.2)
+                #imageShow(binary_phase, 'phaseCompensate')
+
+                # Applying the summation and thresholding metric
+                sum = np.sum(np.sum(binary_phase))
+                if (sum > sum_max):
+                    f_out = fTemp
+                    g_out = gTemp
+                    cur_out = curTemp
+                    sum_max = sum
+                    
+                    if (vis):
+                        # Create a figure with three subplots
+                        fig, (ax1, ax2, ax3) = plt.subplots(1, 3)
+                
+                        # Plot the first image in the first subplot
+                        ax1.imshow(np.angle(phi_spherical))
+                        ax1.set_title('phi_spherical')
+                
+                        # Plot the second image in the second subplot
+                        ax2.imshow(np.angle(comp_phase))
+                        ax2.set_title('comp_phase')
+                
+                        # Plot the third image in the third subplot
+                        ax3.imshow(phaseCompensate)
+                        ax3.set_title('phaseCompensate')
+                
+                        # Show the figure
+                        plt.show()
+                    
+    return f_out, g_out, cur_out, sum_max
+    
+                    
 def CNT(inp, wavelength, dx, dy, x1=None, x2=None, y1=None, y2=None, spatialFilter=None):
     '''
     # Function to compensate phase maps of image plane off-axis DHM, operating in non-telecentric regimen
@@ -437,8 +494,30 @@ def CNT(inp, wavelength, dx, dy, x1=None, x2=None, y1=None, y2=None, spatialFilt
     f = ((M/2) - int(p))/2
     g = ((N/2) - int(q))/2
     
-    cont = 0
-    sum_max = 0
+    #Let's test the sign of the spherical phase factor
+    
+    s = 50
+    step = 100
+    perc = 5/100
+    arrayCurvature = np.arange(cur - (cur*perc), cur + (cur*perc), perc/2)
+    arrayXcenter = np.arange(f - s, f + s, step)
+    arrayYcenter = np.arange(g - s, g + s, step)
+    
+    sign = True
+    sum_max_True = brute_search(comp_phase, arrayCurvature, arrayXcenter, arrayYcenter, wavelength, X, Y, dx, dy, sign, vis = False)[3]
+    #print (sum_max_True)
+    
+    sign = False
+    sum_max_False = brute_search(comp_phase, arrayCurvature, arrayXcenter, arrayYcenter, wavelength, X, Y, dx, dy, sign, vis = False) [3]
+    #print (sum_max_False)
+    
+    if (sum_max_True > sum_max_False):
+        sign = True
+    else:
+        sign = False
+        
+    print ("Sign of spherical phase factor: ", sign)
+    
     s = 100
     step = 50
     perc = 40/100
@@ -446,121 +525,35 @@ def CNT(inp, wavelength, dx, dy, x1=None, x2=None, y1=None, y2=None, spatialFilt
     arrayCurvature = np.arange(cur - (cur*perc), cur + (cur*perc), perc/6)
     arrayXcenter = np.arange(f - s, f + s, step)
     arrayYcenter = np.arange(g - s, g + s, step)
-    for curTemp in arrayCurvature:
-        print (curTemp)
-        for fTemp in arrayXcenter:
-            for gTemp in arrayYcenter:
-                cont = cont + 1
-                phi_spherical = (np.power(X - fTemp, 2) * np.power(dx, 2) / curTemp) + (np.power(Y - gTemp, 2) * np.power(dy, 2) / curTemp)
-                phi_spherical = math.pi * phi_spherical / wavelength
-                #phi_spherical = np.exp(-1j * phi_spherical)
-                phi_spherical = np.exp(1j * phi_spherical)
-                
-                phaseCompensate = comp_phase * phi_spherical
-                phaseCompensate = np.angle(phaseCompensate)
-                #imageShow(phaseCompensate, 'phaseCompensate')                
-
-                minVal = np.amin(phaseCompensate)
-                maxVal = np.amax(phaseCompensate)
-                phase_sca = (phaseCompensate - minVal) / (maxVal - minVal)
-                binary_phase = (phase_sca > 0.2)
-                #imageShow(binary_phase, 'phaseCompensate')
-
-                # Applying the summation and thresholding metric
-                sum = np.sum(np.sum(binary_phase))
-                if (sum > sum_max):
-                    f_out = fTemp
-                    g_out = gTemp
-                    cur_out = curTemp
-                    sum_max = sum
-                    
-                    # Create a figure with three subplots
-                    fig, (ax1, ax2, ax3) = plt.subplots(1, 3)
-                
-                    # Plot the first image in the first subplot
-                    ax1.imshow(np.angle(phi_spherical))
-                    ax1.set_title('phi_spherical')
-                
-                    # Plot the second image in the second subplot
-                    ax2.imshow(np.angle(comp_phase))
-                    ax2.set_title('comp_phase')
-                
-                    # Plot the third image in the third subplot
-                    ax3.imshow(phaseCompensate)
-                    ax3.set_title('phaseCompensate')
-                
-                    # Show the figure
-                    plt.show()
+    
+    print ("Starting the coarse search...")
+    
+    f_out, g_out, cur_out, _ = brute_search(comp_phase, arrayCurvature, arrayXcenter, arrayYcenter, wavelength, X, Y, dx, dy, sign, vis = False)
 
     print("After first coarse search ", f_out, g_out, cur_out)
 
-    cont = 0
-    sum_max = 0
     s = 10
     step = 2
     perc = 0.1
     arrayXcenter = np.arange(f_out - s, f_out + s, step)
     arrayYcenter = np.arange(g_out - s, g_out + s, step)
     arrayCurvature = np.arange(cur_out - (cur_out*perc), cur_out + (cur_out*perc), 0.01)
-    #arrayCurvature = np.arange(1.003, 1.03, 0.01)
-
-    for curTemp in arrayCurvature:
-        print (curTemp)
-        for fTemp in arrayXcenter:
-            for gTemp in arrayYcenter:
-                #print(curTemp)
-                cont = cont + 1
-                phi_spherical = (np.power(X - fTemp, 2) * np.power(dx, 2) / curTemp) + (
-                    np.power(Y - gTemp, 2) * np.power(dy, 2) / curTemp)
-                phi_spherical = math.pi * phi_spherical / wavelength
-                #phi_spherical = np.exp(-1j * phi_spherical)
-                phi_spherical = np.exp(1j * phi_spherical)
-                
-                phaseCompensate = comp_phase * phi_spherical
-                phaseCompensate = np.angle(phaseCompensate)
-                #imageShow(phaseCompensate, 'phaseCompensate')
-
-                minVal = np.amin(phaseCompensate)
-                maxVal = np.amax(phaseCompensate)
-                phase_sca = (phaseCompensate - minVal) / (maxVal - minVal)
-                binary_phase = (phase_sca > 0.2)
-                #imageShow(binary_phase, 'phaseCompensate')
-
-                # Applying the summation and thresholding metric
-                sum = np.sum(np.sum(binary_phase))
-                #print(sum, curTemp)
-                if (sum > sum_max):
-                    f_out = fTemp
-                    g_out = gTemp
-                    cur_out = curTemp
-                    sum_max = sum
-                    
-                    # Create a figure with three subplots
-                    fig, (ax1, ax2, ax3) = plt.subplots(1, 3)
-                
-                    # Plot the first image in the first subplot
-                    ax1.imshow(np.angle(phi_spherical))
-                    ax1.set_title('phi_spherical')
-                
-                    # Plot the second image in the second subplot
-                    ax2.imshow(np.angle(comp_phase))
-                    ax2.set_title('comp_phase')
-                
-                    # Plot the third image in the third subplot
-                    ax3.imshow(phaseCompensate)
-                    ax3.set_title('phaseCompensate')
-                
-                    # Show the figure
-                    plt.show()
+    
+    print ("Starting the fine search...")
+        
+    f_out, g_out, cur_out, _ = brute_search(comp_phase, arrayCurvature, arrayXcenter, arrayYcenter, wavelength, X, Y, dx, dy, sign, vis = True)
 
     phi_spherical = (np.power(X - f_out, 2) * np.power(dx, 2) / cur_out) + (
             np.power(Y - g_out, 2) * np.power(dy, 2) / cur_out)
     phi_spherical = math.pi * phi_spherical / wavelength
-    #phi_spherical = np.exp(-1j * phi_spherical)
-    phi_spherical = np.exp(1j * phi_spherical)
+    
+    if (sign == True):
+        phi_spherical = np.exp(1j * phi_spherical)
+    else:
+        phi_spherical = np.exp(-1j * phi_spherical)
+
     phaseCompensate = comp_phase * phi_spherical
 
-    
     print("After fine compensation", f_out, g_out, cur_out)
 
     print("Phase compensation finished.")
