@@ -76,6 +76,10 @@ from scipy.optimize import fsolve
 #The basinhopping algorithm is a global optimization algorithm that combines a local optimizer such as L-BFGS-B with a random sampling method, such as Metropolis-Hastings. It allows to set a 'callback' function that is called after each iteration of the optimization. In this callback function, one can check if the current solution is non-dominated, and if it is, you can add it to your Pareto front.
 from scipy.optimize import basinhopping 
 
+# Define global variables for storing mouse click coordinates
+mouse_x = 1
+mouse_y = 1
+
 def holo_read(filename, vargin):
 
     '''
@@ -328,35 +332,11 @@ def spatialFilterinCNT(inp, M, N):
 
     return Xcenter, Ycenter, holo_filter, ROI_array
 
-# Define global variables for storing mouse click coordinates
-mouse_x = 1
-mouse_y = 1
-
 def mouse_callback(event, x, y, flags, param):
     global mouse_x, mouse_y
     if event == cv2.EVENT_LBUTTONUP:
         mouse_x, mouse_y = x, y
         print('Pixel coordinates selected:', x, y)
-
-def get_g_and_h_manual(holoCompensate):
-
-    M, N = holoCompensate.shape
-    
-    print ("Select the center of the spherical phase factor and press 'esc'")
-    cv2.namedWindow('image')
-    cv2.setMouseCallback('image', mouse_callback)
-
-    cv2.imshow('image', np.angle(holoCompensate))
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-    
-    # Get the mouse click coordinates from the global variables
-    p, q = mouse_x, mouse_y
-
-    g = ((M/2) - p)/2
-    h = ((N/2) - q)/2
-
-    return g, h
 
 def brute_search(comp_phase, arrayCurvature, arrayXcenter, arrayYcenter, wavelength, X, Y, dx, dy, sign, vis):
     
@@ -413,20 +393,14 @@ def brute_search(comp_phase, arrayCurvature, arrayXcenter, arrayYcenter, wavelen
                         plt.show()
                     
     return f_out, g_out, cur_out, sum_max
-    
                     
-def CNT(inp, wavelength, dx, dy, x1=None, x2=None, y1=None, y2=None, spatialFilter=None):
+def CNT(inp, wavelength, dx, dy):
     '''
     # Function to compensate phase maps of image plane off-axis DHM, operating in non-telecentric regimen
     # Inputs:
     # inp - The input intensity (captured) hologram
     # wavelength - Wavelength of the illumination source to register the DHM hologram
     # dx, dy - Pixel dimensions of the camera sensor used for recording the hologram
-    # x1 - Coordinate x1 for the rectangle (upper left corner)
-    # y1 - Coordinate y1 for the rectangle (upper left corner)
-    # x2 - Coordinate x2 for the rectangle (lower right corner)
-    # y2 - Coordinate y2 for the rectangle (lower right corner)
-    # spatialFilter - The approach to compute the spatial filter, two options available      and sfmr
     '''
 
     #wavelength = wavelength * 0.000001
@@ -496,9 +470,9 @@ def CNT(inp, wavelength, dx, dy, x1=None, x2=None, y1=None, y2=None, spatialFilt
     
     #Let's test the sign of the spherical phase factor
     
-    s = 50
-    step = 100
-    perc = 5/100
+    s = max(M,N)*0.05
+    step = max(M,N)*0.1
+    perc = 0.05
     arrayCurvature = np.arange(cur - (cur*perc), cur + (cur*perc), perc/2)
     arrayXcenter = np.arange(f - s, f + s, step)
     arrayYcenter = np.arange(g - s, g + s, step)
@@ -516,13 +490,13 @@ def CNT(inp, wavelength, dx, dy, x1=None, x2=None, y1=None, y2=None, spatialFilt
     else:
         sign = False
         
-    sign = True
+    #sign = True
         
     print ("Sign of spherical phase factor: ", sign)
     
-    s = 100
-    step = 50
-    perc = 40/100
+    s = max(M,N)*0.1
+    step = s/2
+    perc = 0.4
 
     arrayCurvature = np.arange(cur - (cur*perc), cur + (cur*perc), perc/6)
     arrayXcenter = np.arange(f - s, f + s, step)
@@ -534,12 +508,12 @@ def CNT(inp, wavelength, dx, dy, x1=None, x2=None, y1=None, y2=None, spatialFilt
 
     print("After first coarse search ", f_out, g_out, cur_out)
 
-    s = 10
-    step = 2
+    s = max(M,N)*0.01
+    step = s/5
     perc = 0.1
     arrayXcenter = np.arange(f_out - s, f_out + s, step)
     arrayYcenter = np.arange(g_out - s, g_out + s, step)
-    arrayCurvature = np.arange(cur_out - (cur_out*perc), cur_out + (cur_out*perc), 0.01)
+    arrayCurvature = np.arange(cur_out - (cur_out*perc), cur_out + (cur_out*perc), 0.02)
     
     print ("Starting the fine search...")
         
