@@ -496,7 +496,7 @@ def CNT(inp, wavelength, dx, dy):
     
     s = max(M,N)*0.1
     step = s/2
-    perc = 0.4
+    perc = 0.6
 
     arrayCurvature = np.arange(cur - (cur*perc), cur + (cur*perc), perc/6)
     arrayXcenter = np.arange(f - s, f + s, step)
@@ -504,12 +504,12 @@ def CNT(inp, wavelength, dx, dy):
     
     print ("Starting the coarse search...")
     
-    f_out, g_out, cur_out, _ = brute_search(comp_phase, arrayCurvature, arrayXcenter, arrayYcenter, wavelength, X, Y, dx, dy, sign, vis = False)
+    f_out, g_out, cur_out, _ = brute_search(comp_phase, arrayCurvature, arrayXcenter, arrayYcenter, wavelength, X, Y, dx, dy, sign, vis = True)
 
     print("After first coarse search ", f_out, g_out, cur_out)
 
-    s = max(M,N)*0.01
-    step = s/5
+    s = max(M,N)*0.006
+    step = s/4
     perc = 0.1
     arrayXcenter = np.arange(f_out - s, f_out + s, step)
     arrayYcenter = np.arange(g_out - s, g_out + s, step)
@@ -518,9 +518,10 @@ def CNT(inp, wavelength, dx, dy):
     print ("Starting the fine search...")
         
     f_out, g_out, cur_out, _ = brute_search(comp_phase, arrayCurvature, arrayXcenter, arrayYcenter, wavelength, X, Y, dx, dy, sign, vis = True)
+    
+    print("After fine compensation", f_out, g_out, cur_out)
 
-    phi_spherical = (np.power(X - f_out, 2) * np.power(dx, 2) / cur_out) + (
-            np.power(Y - g_out, 2) * np.power(dy, 2) / cur_out)
+    phi_spherical = (np.power(X - f_out, 2) * np.power(dx, 2) / cur_out) + (np.power(Y - g_out, 2) * np.power(dy, 2) / cur_out)
     phi_spherical = math.pi * phi_spherical / wavelength
     
     if (sign == True):
@@ -529,8 +530,6 @@ def CNT(inp, wavelength, dx, dy):
         phi_spherical = np.exp(-1j * phi_spherical)
 
     phaseCompensate = comp_phase * phi_spherical
-
-    print("After fine compensation", f_out, g_out, cur_out)
 
     print("Phase compensation finished.")
 
