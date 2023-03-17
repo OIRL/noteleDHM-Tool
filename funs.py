@@ -398,8 +398,8 @@ def CNT(inp, wavelength, dx, dy, x1=None, x2=None, y1=None, y2=None, spatialFilt
     #plt.gca().set_aspect('equal', adjustable='box'); plt.show()
 
     # reference wave for the first compensation (global linear compensation)
-    ThetaXM = math.asin((N / 2 - Xcenter) * wavelength / (M * dx))
-    ThetaYM = math.asin((M / 2 - Ycenter) * wavelength / (N * dy))
+    ThetaXM = math.asin((N / 2 - Xcenter) * wavelength / (N * dx))
+    ThetaYM = math.asin((M / 2 - Ycenter) * wavelength / (M * dy))
     reference = np.exp(1j * k * (math.sin(ThetaXM) * X * dx + math.sin(ThetaYM) * Y * dy))
 
     # First compensation (tilting angle compensation)
@@ -534,10 +534,29 @@ def CNT(inp, wavelength, dx, dy, x1=None, x2=None, y1=None, y2=None, spatialFilt
                     g_out = gTemp
                     cur_out = curTemp
                     sum_max = sum
+                    
+                    # Create a figure with three subplots
+                    fig, (ax1, ax2, ax3) = plt.subplots(1, 3)
+                
+                    # Plot the first image in the first subplot
+                    ax1.imshow(np.angle(phi_spherical))
+                    ax1.set_title('phi_spherical')
+                
+                    # Plot the second image in the second subplot
+                    ax2.imshow(np.angle(comp_phase))
+                    ax2.set_title('comp_phase')
+                
+                    # Plot the third image in the third subplot
+                    ax3.imshow(phaseCompensate)
+                    ax3.set_title('phaseCompensate')
+                
+                    # Show the figure
+                    plt.show()
 
     phi_spherical = (np.power(X - f_out, 2) * np.power(dx, 2) / cur_out) + (
             np.power(Y - g_out, 2) * np.power(dy, 2) / cur_out)
     phi_spherical = math.pi * phi_spherical / wavelength
+    #phi_spherical = np.exp(-1j * phi_spherical)
     phi_spherical = np.exp(1j * phi_spherical)
     phaseCompensate = comp_phase * phi_spherical
 

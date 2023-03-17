@@ -30,10 +30,10 @@ The main code starts here
 '''
 
 #Different image files to process (no-tele holograms). Sample input holograms located in 'data/'
-#["4cm_20x_bigcakes.tiff", "-4cm_20x_star.tiff", "4cm_20x_usaf.tiff", "RBCnotele50x.tiff", "RBCnotele50x_square.tiff", "holonotele_fly-resize.png", "4cm_20x_usaf_square.tiff"]
+#["4cm_20x_bigcakes.tiff", "-4cm_20x_star.tiff", "4cm_20x_usaf.tiff", "RBCnotele50x.tiff", "RBCnotele50x_square.tiff", "4cm_20x_usaf_square.tiff"]
 
 #Loading image file (hologram) to process
-user_input = '4cm_20x_usaf_square.tiff'
+user_input = '4cm_20x_bigcakes.tiff'
 filename = 'data/' + user_input
 print ('Non-telecentric DHM hologram: ', filename)
 
