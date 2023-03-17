@@ -33,7 +33,7 @@ The main code starts here
 #["4cm_20x_bigcakes.tiff", "-4cm_20x_star.tiff", "4cm_20x_usaf.tiff", "RBCnotele50x.tiff"]
 
 #Loading image file (hologram) to process
-user_input = '4cm_20x_usaf.tiff'
+user_input = '-4cm_20x_star_small.tiff'
 filename = 'data/' + user_input
 print ('Non-telecentric DHM hologram: ', filename)
 
@@ -56,7 +56,7 @@ print ('Phase compensation starts...')
 0: Manual determination of the M&N and H&G coordinates for no-tele compensation. 
 1: Automatic determination of these parameters.
 '''
-auto = 1
+auto = 0
 
 if auto:
 
@@ -72,8 +72,7 @@ if auto:
     #print("Processing time get_plus1:", timer()-start) #Time for get_plus1 execution
 
     #Compensating the tilting angle first
-    off = 0 #some kind of offset
-    holoCompensate = funs.filter_center_plus1(FT_holo,plus_coor,m-off,n-off,Lambda,X,Y,dx,dy,k)
+    holoCompensate = funs.filter_center_plus1(FT_holo,plus_coor,m,n,Lambda,X,Y,dx,dy,k)
 
     # Binarized Spherical Aberration
     BW = funs.binarize_compensated_plus1(holoCompensate)
@@ -86,21 +85,21 @@ if auto:
     Cy = np.power((N * dy), 2)/(Lambda * n)
     cur = (Cx + Cy)/2
 
+    #Let's select the sign of the compensating spherical phase factor
+    sign = True
+    
     #Let's built the spherical phase factor for compensation
     phi_spherical = funs.phi_spherical_C(cur, g, h, dx, X, Y, Lambda)
-    phase_mask = np.exp((-1j)*phi_spherical)
-    phase_mask_2 = np.exp((1j)*phi_spherical) #Negative curvature
+    
+    if (sign):
+        phase_mask = np.exp((1j)*phi_spherical)
+    else:
+        phase_mask = np.exp((-1j)*phi_spherical)
 
     #Let's apply the second (quadratic) compensation according to Kemper
     corrected_image = holoCompensate * phase_mask
     
     plt.figure(); plt.imshow(np.angle(corrected_image), cmap='gray'); plt.title('Non-optimized compensated image'); 
-    plt.gca().set_aspect('equal', adjustable='box'); plt.show()
-
-    #Let's apply the second (quadratic) compensation according to Kemper (negative phase factor)
-    corrected_image = holoCompensate * phase_mask_2
-    
-    plt.figure(); plt.imshow(np.angle(corrected_image), cmap='gray'); plt.title('Non-optimized compensated image (Negative curvature)'); 
     plt.gca().set_aspect('equal', adjustable='box'); plt.show()
     
     '''
@@ -127,9 +126,9 @@ if auto:
 
     # Set the cost function
     if cost == 0:
-        minfunc = lambda t: funs.bin_CF_noTele_BAR_1d(phi_spherical_C, t, holoCompensate, M, N)
+        minfunc = lambda t: funs.bin_CF_noTele_BAR_1d(phi_spherical_C, t, holoCompensate, M, N, sign)
     elif cost == 1:
-        minfunc = lambda t: funs.std_CF_noTele_BAR_1d(phi_spherical_C, t, holoCompensate, M, N)
+        minfunc = lambda t: funs.std_CF_noTele_BAR_1d(phi_spherical_C, t, holoCompensate, M, N, sign)
   
     #Determination (minimization) of the optimal parameter (C -curvature) for the accurate phase compensation of no tele DHM holograms.
 
@@ -184,7 +183,11 @@ if auto:
 
     print ('C optimized: ', Cy_opt)
 
-    phase_mask = np.exp((-1j)*phi_spherical) #complex matrix of the compensating quadratic phase factor
+    if (sign):
+        phase_mask = np.exp((1j)*phi_spherical)  # Compute the phase mask by taking the exponential of 1j times phi_spherical.
+    else:
+        phase_mask = np.exp((-1j)*phi_spherical)  # Compute the phase mask by taking the exponential of -1j times phi_spherical.
+        
     corrected_image = holoCompensate * phase_mask #Compensation
     plt.figure(); plt.imshow(np.angle(corrected_image), cmap='gray'); plt.title('Corrected_image after optimization'); 
     plt.gca().set_aspect('equal', adjustable='box'); plt.show()
