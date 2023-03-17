@@ -250,9 +250,6 @@ def filter_center_plus1(FT_holo, plus_coor, m, n, Lambda, X, Y, dx, dy, k):
     ThetaXM = np.arcsin((M/2 - plus_coor[0]) * Lambda / (M * dx))
     ThetaYM = np.arcsin((N/2 - plus_coor[1]) * Lambda / (N * dy))
     
-    plt.figure(); plt.imshow(X, cmap='gray'); plt.title('X'); plt.gca().set_aspect('equal', adjustable='box'); plt.show()
-    plt.figure(); plt.imshow(Y, cmap='gray'); plt.title('Y'); plt.gca().set_aspect('equal', adjustable='box'); plt.show() 
-    
     # Calculate the reference array
     Reference = np.exp(1j * k * (np.sin(ThetaXM) * X * dx + np.sin(ThetaYM) * Y * dy))
     # Invert the Fourier transform of the filtered hologram
@@ -343,7 +340,7 @@ def phi_spherical_C(C, g, h, dx, X, Y, Lambda):
     '''
     return (np.pi/(Lambda*C))*((X-(g+1))**2 + (Y-(h+1))**2)*(dx**2)
     
-def bin_CF_noTele_BAR_1d(fun, seed_cur, holoCompensate, M, N):
+def bin_CF_noTele_BAR_1d(fun, seed_cur, holoCompensate, M, N, sign):
     '''
     Variables:
     fun: function to optimize
@@ -352,7 +349,12 @@ def bin_CF_noTele_BAR_1d(fun, seed_cur, holoCompensate, M, N):
     M and N: integer varaibles representing the number of pixels in each dimension of 'holoCompensate'
     '''
     phi_spherical = fun(seed_cur)  # Compute phi_spherical by calling the function fun with input seed_cur.
-    phase_mask = np.exp((-1j)*phi_spherical)  # Compute the phase mask by taking the exponential of -1j times phi_spherical.
+    
+    if (sign):
+        phase_mask = np.exp((1j)*phi_spherical)  # Compute the phase mask by taking the exponential of 1j times phi_spherical.
+    else:
+        phase_mask = np.exp((-1j)*phi_spherical)  # Compute the phase mask by taking the exponential of -1j times phi_spherical.
+        
     corrected_image = holoCompensate * phase_mask  # Compensate the image by multiplying the hologram with the phase mask.
     phase = np.angle(corrected_image)  # Compute the phase of the corrected image using np.angle.
     phase = phase + np.pi  # Add pi to the phase to shift the values from [-pi, pi] to [0, 2*pi].
@@ -360,7 +362,7 @@ def bin_CF_noTele_BAR_1d(fun, seed_cur, holoCompensate, M, N):
     J = M*N - np.sum(ib)  # Compute the number of pixels with value 0 in the binary image ib.
     return J
 
-def std_CF_noTele_BAR_1d(fun, Cx, holoCompensate, M, N):
+def std_CF_noTele_BAR_1d(fun, Cx, holoCompensate, M, N, sign):
     '''
     Variables:
     fun: function to optimize
@@ -369,7 +371,11 @@ def std_CF_noTele_BAR_1d(fun, Cx, holoCompensate, M, N):
     M and N: integer varaibles representing the number of pixels in each dimension of 'holoCompensate'
     '''
     phi_spherical = fun(Cx)  # Compute phi_spherical by calling the function fun with input seed Cx.
-    phase_mask = np.exp((-1j)*phi_spherical)  # Compute the phase mask by taking the exponential of -1j times phi_spherical.
+    if (sign):
+        phase_mask = np.exp((1j)*phi_spherical)  # Compute the phase mask by taking the exponential of 1j times phi_spherical.
+    else:
+        phase_mask = np.exp((-1j)*phi_spherical)  # Compute the phase mask by taking the exponential of -1j times phi_spherical.
+        
     corrected_image = holoCompensate * phase_mask  # Compensate the image by multiplying the hologram with the phase mask.
     phase = np.angle(corrected_image)  # Compute the phase of the corrected image using np.angle.
     phase = phase + np.pi  # Add pi to the phase to shift the values from [-pi, pi] to [0, 2*pi].
@@ -598,15 +604,15 @@ def brute_search(comp_phase, arrayCurvature, arrayXcenter, arrayYcenter, wavelen
     
     for curTemp in arrayCurvature:
         #print ("... in 'cur': ", curTemp, " going to: ", arrayCurvature[-1])
-        for fTemp in arrayXcenter:
-            for gTemp in arrayYcenter:
+        for gTemp in arrayXcenter:
+            for hTemp in arrayYcenter:
                 cont = cont + 1
                 
-                phaseCompensate, phi_spherical, sum = TSM(comp_phase, curTemp, fTemp, gTemp, wavelength, X, Y, dx, dy, sign)
+                phaseCompensate, phi_spherical, sum = TSM(comp_phase, curTemp, gTemp, hTemp, wavelength, X, Y, dx, dy, sign)
                 
                 if (sum > sum_max):
-                    f_out = fTemp
                     g_out = gTemp
+                    h_out = hTemp
                     cur_out = curTemp
                     sum_max = sum
                     
@@ -629,10 +635,10 @@ def brute_search(comp_phase, arrayCurvature, arrayXcenter, arrayYcenter, wavelen
                         # Show the figure
                         plt.show()
                     
-    return f_out, g_out, cur_out, sum_max
+    return g_out, h_out, cur_out, sum_max
 
-def TSM(comp_phase, curTemp, fTemp, gTemp, wavelength, X, Y, dx, dy, sign):
-    phi_spherical = (np.power(X - fTemp, 2) * np.power(dx, 2) / curTemp) + (np.power(Y - gTemp, 2) * np.power(dy, 2) / curTemp)
+def TSM(comp_phase, curTemp, gTemp, hTemp, wavelength, X, Y, dx, dy, sign):
+    phi_spherical = (np.power(X - gTemp, 2) * np.power(dx, 2) / curTemp) + (np.power(Y - hTemp, 2) * np.power(dy, 2) / curTemp)
     phi_spherical = math.pi * phi_spherical / wavelength
     if (sign == True):
         phi_spherical = np.exp(1j * phi_spherical)
@@ -722,8 +728,8 @@ def fast_CNT(inp, wavelength, dx, dy):
     
     print ("p & q: ", p, q)
     
-    f = ((M/2) - int(p))/2
-    g = ((N/2) - int(q))/2
+    g = ((M/2) - int(p))/2
+    h = ((N/2) - int(q))/2
     
     #Let's test the sign of the spherical phase factor
     
@@ -731,8 +737,8 @@ def fast_CNT(inp, wavelength, dx, dy):
     step = max(M,N)*0.1
     perc = 0.05
     arrayCurvature = np.arange(cur - (cur*perc), cur + (cur*perc), perc/2)
-    arrayXcenter = np.arange(f - s, f + s, step)
-    arrayYcenter = np.arange(g - s, g + s, step)
+    arrayXcenter = np.arange(g - s, g + s, step)
+    arrayYcenter = np.arange(h - s, h + s, step)
     
     sign = True
     sum_max_True = brute_search(comp_phase, arrayCurvature, arrayXcenter, arrayYcenter, wavelength, X, Y, dx, dy, sign, vis = False)[3]
@@ -751,11 +757,11 @@ def fast_CNT(inp, wavelength, dx, dy):
         
     print ("Sign of spherical phase factor: ", sign)
     
-    step_f = max(M,N)*0.1
-    step_g = step_f
+    step_g = max(M,N)*0.1
+    step_h = step_g
     step_cur = 0.6*cur
     
-    current_point = (cur, f, g)
+    current_point = (cur, g, h)
     
     phaseCompensate, phi_spherical, current_value = TSM(comp_phase, current_point[0], current_point[1], current_point[2], wavelength, X, Y, dx, dy, sign)
     
@@ -785,7 +791,7 @@ def fast_CNT(inp, wavelength, dx, dy):
                 for dez in [-2, -1, 0, 1, 2]:
                     if dex == dey == dez == 0:
                         continue
-                    neighbor = (current_point[0] + dez*step_cur, current_point[1] + dex*step_f, current_point[2] + dey*step_g)
+                    neighbor = (current_point[0] + dez*step_cur, current_point[1] + dex*step_g, current_point[2] + dey*step_h)
                     neighbors.append(neighbor)
         #print ("current_point", current_point)
         #print ("neighbors", neighbors)
@@ -826,8 +832,8 @@ def fast_CNT(inp, wavelength, dx, dy):
         else:
             break
         
-        step_f = step_f*0.5
-        step_g = step_f
+        step_g = step_g*0.5
+        step_h = step_g
         step_cur = step_cur*0.5
     
     #current_point #(cur, f, g)
