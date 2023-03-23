@@ -2,41 +2,42 @@ classdef funs
     methods(Static)
 
           function [holo,M,N,m,n] = holo_read(filename,vargin)
-          %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-          % Title: holo_read                                                             %
-          %                                                                              %
-          % The function is implemented to read a hologram, the hologram is cut to get   %
-          % square dimension, the square has the dimension of the higher side of the     %
-          % digital camera used to record the hologram, and the cut is making from the   %
-          % center of the hologram.                                                      %
-          %                                                                              %                                                                        
-          % Authors: Raul Castaneda and Ana Doblas                                       %
-          % Department of Electrical and Computer Engineering, The University of Memphis,% 
-          % Memphis, TN 38152, USA.                                                      %   
-          %                                                                              %
-          % Email: adoblas@memphis.edu                                                   %
-          %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-          holo = double(imread(filename));
-          holo = holo(:,:,1);
-          if nargin == 2
-            scale = vargin;
-          else
-            scale = 1;
-          end
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            % Title: holo_read                                                             %
+            %                                                                              %
+            % The function is implemented to read a hologram, the hologram is cut to get   %
+            % square dimension, the square has the dimension of the higher side of the     %
+            % digital camera used to record the hologram, and the cut is making from the   %
+            % center of the hologram.                                                      %
+            %                                                                              %                                                                        
+            % Authors: Raul Castaneda and Ana Doblas                                       %
+            % Department of Electrical and Computer Engineering, The University of Memphis,% 
+            % Memphis, TN 38152, USA.                                                      %   
+            %                                                                              %
+            % Email: adoblas@memphis.edu                                                   %
+            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+            holo = double(imread(filename));
+            holo = holo(:,:,1);
+            if nargin == 2
+                scale = vargin;
+            else
+                scale = 1;
+            end
 
-          holo = imresize(holo,scale,'nearest');
-          [M,N] = size(holo);
-          if (M > N)
-           cut = (M - N)/2;
-           holo = holo(cut:(M-cut-1):N,1:N);
-          elseif (M < N)
-           cut = (N - M)/2;
-           holo = holo(1:M,cut:(N-cut)-1);
-          else
-           holo = holo;
-          end
-          [M,N] = size(holo);    
-          [m,n] = meshgrid(-M/2+1:M/2,-N/2+1:N/2);
+            holo = imresize(holo,scale,'nearest');
+            [M,N] = size(holo);
+            if (M > N)
+                cut = (M - N)/2;
+                holo = holo(cut:(M-cut-1):N,1:N);
+            elseif (M < N)
+                cut = (N - M)/2;
+                holo = holo(1:M,cut:(N-cut)-1);
+            else
+                holo = holo;
+            end
+            [M,N] = size(holo);    
+            [m,n] = meshgrid(-M/2+1:M/2,-N/2+1:N/2);
+
           end
 
           function ft = FT(holo)
@@ -208,5 +209,82 @@ classdef funs
             end
           end
 
+          function [Xcenter, Ycenter, holo_filter, ROI_array] = spatialFilterinCNT(inp, M, N)
+
+            fft_holo = fft2(single(inp)); % FFT of hologram
+            fft_holo = fftshift(fft_holo);
+            fft_holo_image = 20*log10(abs(fft_holo)); % logarithmic scale FFT
+
+            minVal = min(min(abs(fft_holo_image)));
+            maxVal = max(max(abs(fft_holo_image)));
+            fft_holo_image = uint8((fft_holo_image - minVal) * 255 / (maxVal - minVal)); % conversion of data to uint8
+
+            % select ROI interactively
+            imshow(fft_holo_image);
+            r1 = drawrectangle('Label','OuterRectangle','Color',[1 0 0]);
+            ROI = r1.Position
+
+            x1_ROI = ROI(2);
+            y1_ROI = ROI(1);
+            x2_ROI = ROI(2) + ROI(4);
+            y2_ROI = ROI(1) + ROI(3);
+            ROI_array = [x1_ROI, y1_ROI, x2_ROI, y2_ROI]
+
+            % computing the center of the rectangle mask
+            Ycenter = x1_ROI + (x2_ROI - x1_ROI)/2;
+            Xcenter = y1_ROI + (y2_ROI - y1_ROI)/2;
+
+            holo_filter = zeros(M, N, 2);
+
+            figure(); imshow(holo_filter, []); title('mask');
+            axis equal; colormap gray; colorbar;
+
+
+            holo_filter(x1_ROI:x2_ROI, y1_ROI:y2_ROI, :) = 1;
+            holo_filter = holo_filter .* fft_holo;
+            holo_filter = ifftshift(holo_filter);
+            holo_filter = ifft2(holo_filter);
+
+            holo_filter_real = real(holo_filter);
+            holo_filter_imag = imag(holo_filter);
+            holo_filter = complex(holo_filter_real, holo_filter_imag);
+
+          end
+
+          function [ft_holo] = fast_CNT(inp, wavelength, dx, dy)
+            % Function for rapid compensation of phase maps of image plane off-axis DHM, operating in non-telecentric regimen
+            % Inputs:
+            % inp - The input intensity (captured) hologram
+            % wavelength - Wavelength of the illumination source to register the DHM hologram
+            % dx, dy - Pixel dimensions of the camera sensor used for recording the hologram
+
+            % wavelength = wavelength * 0.000001;
+            % dx = dx * 0.000001;
+            % dy = dy * 0.000001;
+
+            % Retrieving the input shape
+            inp = double(inp);
+            [M, N] = size(inp);
+            k = (2 * pi) / wavelength;
+
+            % Creating a mesh-grid to operate in world coordinates
+            x = 0:(N-1);
+            y = 0:(M-1);
+            [X, Y] = meshgrid(x - (N / 2), y - (M / 2)); % meshgrid XY
+
+            % The spatial filtering process is executed
+            disp('Spatial filtering process started.....');
+            [Xcenter, Ycenter, holo_filter, ROI_array] = funs.spatialFilterinCNT(inp, M, N);
+            disp('Spatial filtering process finished.');
+
+            figure(); imshow(abs(holo_filter).^2, []); title('holo_filter');
+            axis equal; colormap gray; colorbar;
+
+            % Fourier transform to the hologram filtered
+            ft_holo = fft2(holo_filter);
+            figure(); imshow(abs(ft_holo).^2, []); title('FT Filtered holo');
+            axis equal; colormap gray; colorbar;
+
+          end
     end
 end

@@ -14,7 +14,7 @@ Last update: March 23, 2023.
 Authors: Brian Bogue-Jimenez, Carlos Trujillo, and Ana Doblas
 %}
 
-%% clear memory 
+% clear memory 
 
 clc % clean
 close all% close all windows
@@ -48,7 +48,7 @@ disp('Phase compensation starts...');
 1: Automatic determination of these parameters.
 %}
 
-auto = 1;
+auto = 0;
 
 if auto
     
@@ -208,6 +208,9 @@ if auto
     title('Compensated image after optimization');axis square
 
 else
-
     
+    tic
+    out = funs.fast_CNT(holo, Lambda, dx, dy);
+    toc
+
 end
