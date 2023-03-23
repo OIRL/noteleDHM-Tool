@@ -110,8 +110,8 @@ if auto:
     np.random.seed(0)
 
     #Different available optimization methods
-    alg_array = ["FMC","FMU","FSO","SA","PTS","GA","PS","GA+PS", "BRUTE"]
-    #0: FMC 1: FMU 2: FSO 3: SA 4: PTS 5: GA 6: PS 7: GA+PS 8: BRUTE  (See documentation for further details)
+    alg_array = ["FMC","FMU","FSO","SA","PTS","GA","PS","GA+PS"]
+    #0: FMC 1: FMU 2: FSO 3: SA 4: PTS 5: GA 6: PS 7: GA+PS  (See documentation for further details)
     i = 7; #Select method as desired
     alg = alg_array[i]
 
@@ -163,18 +163,9 @@ if auto:
     elif alg == "PTS": #paretosearch
         print ('Running the pareto search strategy with the', cost_fun[cost])
         Cy_opt = funs.pareto_search(minfunc, cur)
-    elif alg == "PSW": #particleswarm
-        print ('Running the particle swarm optimization with the', cost_fun[cost])
-        Cy_opt = funs.particleswarm(minfunc, lb, ub)
     elif alg == "SA": #simulannealbnd
         print ('Running the simulated annualing algortihm with the', cost_fun[cost])
         Cy_opt = funs.simulannealbnd(minfunc, lb, ub)
-    elif alg == "SGO": #surrogateopt
-        print ('Running the surrogate optimization with the', cost_fun[cost])
-        Cy_opt = funs.surrogateopt(minfunc, lb, ub)
-    elif alg == "BRUTE": #surrogateopt
-        print ('Running the brute force optimization with the', cost_fun[cost])
-        Cy_opt = funs.brute(minfunc, lb, ub)
     else:
         print('No proper optimization method selected')
 

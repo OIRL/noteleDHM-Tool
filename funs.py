@@ -525,29 +525,6 @@ def hybrid_ga_ps(minfunc, lb, ub):
     print("Processing time hybrid_ga_ps:", timer()-start) #Time for SA execution  
     return Cy_opt
 
-def brute(minfunc, lb, ub):
-    '''
-    Variables:
-    minfunc: function to minimize
-    lb and ub: float variables indicating low and upper bounderies of the search range
-    '''
-    start = timer()	#Start to count time
-    lb = -15
-    ub = 0
-    steps = 500
-    step = (ub-lb)/steps
-    print ("ub :", ub, "lb: ", lb, "step: ", step)
-    val_min = 1e6
-    for i in range(1, steps):
-        val = minfunc(lb + step*i)
-        if val < val_min:
-            val_min = val
-            Cy_opt = lb + step*i
-
-    print("Processing time BRUTE:", timer()-start) #Time for SA execution  
-    return Cy_opt
-
-
     
 # Functions for phase compensation using manually input parameters
 def spatialFilterinCNT(inp, M, N):
@@ -660,7 +637,7 @@ def TSM(comp_phase, curTemp, gTemp, hTemp, wavelength, X, Y, dx, dy, sign):
 
 def fast_CNT(inp, wavelength, dx, dy):
     '''
-    # Function rapid compensation of phase maps of image plane off-axis DHM, operating in non-telecentric regimen
+    # Function for rapid compensation of phase maps of image plane off-axis DHM, operating in non-telecentric regimen
     # Inputs:
     # inp - The input intensity (captured) hologram
     # wavelength - Wavelength of the illumination source to register the DHM hologram
