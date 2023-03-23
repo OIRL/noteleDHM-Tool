@@ -50,7 +50,7 @@ classdef funs
             [counts,x] = imhist(I,16);
             T = otsuthresh(counts);
 
-            BW = imbinarize(I, T*bd*1.4);
+            BW = imbinarize(I, T*bd*1.5);
 
             figure; imagesc(BW);axis square; colormap gray;
 
@@ -146,67 +146,27 @@ classdef funs
             end
 
             terms = regionprops(bw,'all');
-            [best_attr,best_term_idx] = min([terms.Eccentricity]);
-            best_term = terms(best_term_idx).BoundingBox;
-            block_center = [best_term(1)+best_term(3)/2, best_term(2)+best_term(4)/2];
-            [M,N] = size(bw);
-            true_center = [M/2, N/2];
+    [best_attr,best_term_idx] = min([terms.Eccentricity]);
+    best_term = terms(best_term_idx).BoundingBox;
+    block_center = [best_term(1)+best_term(3)/2, best_term(2)+best_term(4)/2];
+    [M,N] = size(bw);
+    true_center = [M/2, N/2];
 
-            g_and_h = abs(block_center - true_center);
-            figure, imshow(bw);
-            axis on;
-            hold on;
-            plot(true_center(1), true_center(2), 'r*', 'MarkerSize', 10, 'LineWidth', 2);
-            plot(block_center(1), block_center(2), 'r*', 'MarkerSize', 10, 'LineWidth', 2);
-            line([true_center(1),block_center(1)],[true_center(2),block_center(2)],'Color','red','LineStyle','--')
-            rectangle('Position', terms(best_term_idx).BoundingBox, 'Linewidth', 3, 'EdgeColor', 'r', 'LineStyle', '--');
-
-            % values for g and h
-            g = g_and_h(1);
-            h = g_and_h(2);
-            disp("G: "+string(g)+" H: "+string(h));
-          end
-
-          function [J] = bin_CF_noTele_BAR_1d(fun,seed_cur,holoCompensate,M,N)
-            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            % Title: CF_noTele_BAR0531                                                     %
-            %                                                                              %                                                                        
-            % Authors: Raul Castaneda and Ana Doblas                                       %
-            % Department of Electrical and Computer Engineering, The University of Memphis,% 
-            % Memphis, TN 38152, USA.                                                      %   
-            %                                                                              %
-            % Email: adoblas@memphis.edu                                                   %
-            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            phi_spherical = fun(seed_cur);
-            phase_mask = exp((-1j)*phi_spherical);
-            corrected_image = holoCompensate .* phase_mask;
-            phase = angle(corrected_image);
-            phase = phase + pi; 
-            ib = imbinarize(phase, 0.5);
-            J = M*N - sum(ib(:));
-          end    
-          
-          function [J] = std_CF_noTele_BAR_1d(fun,Cx,holoCompensate,M,N)
-            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            % Title: CF_noTele_BAR0531                                                     %
-            %                                                                              %                                                                        
-            % Authors: Raul Castaneda and Ana Doblas                                       %
-            % Department of Electrical and Computer Engineering, The University of Memphis,% 
-            % Memphis, TN 38152, USA.                                                      %   
-            %                                                                              %
-            % Email: adoblas@memphis.edu                                                   %
-            %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            phi_spherical = fun(Cx);
-            %     phi_spherical = fun(Cx,Cy);
-            phase_mask = exp((-1j)*phi_spherical);
-            corrected_image = holoCompensate .* phase_mask;
-            phase = angle(corrected_image);
-            phase = phase + pi; 
-            J = std(phase,[],'all');
-            if Cx == 0
-                J = 0.5;
-            end
-          end
+    g_and_h = abs(block_center - true_center);
+    if show == 1
+        figure, imshow(bw);
+        axis on;
+        hold on;
+        plot(true_center(1), true_center(2), 'r*', 'MarkerSize', 10, 'LineWidth', 2);
+        plot(block_center(1), block_center(2), 'r*', 'MarkerSize', 10, 'LineWidth', 2);
+        line([true_center(1),block_center(1)],[true_center(2),block_center(2)],'Color','red','LineStyle','--')
+        rectangle('Position', terms(best_term_idx).BoundingBox, 'Linewidth', 3, 'EdgeColor', 'r', 'LineStyle', '--');
+    end
+    % values for g and h
+    g = g_and_h(1);
+    h = g_and_h(2);
+    disp("G: "+string(g)+" H: "+string(h));
+end
 
     end
 end
