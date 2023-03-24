@@ -224,10 +224,10 @@ classdef funs
             r1 = drawrectangle('Label','+1 D.O. ROI','Color',[1 0 0]);
             ROI = r1.Position;
 
-            x1_ROI = fix(ROI(2));
-            y1_ROI = fix(ROI(1));
-            x2_ROI = fix(ROI(2) + ROI(4));
-            y2_ROI = fix(ROI(1) + ROI(3));
+            x1_ROI = ROI(2);
+            y1_ROI = ROI(1);
+            x2_ROI = ROI(2) + ROI(4);
+            y2_ROI = ROI(1) + ROI(3);
             ROI_array = [x1_ROI, y1_ROI, x2_ROI, y2_ROI];
 
             % computing the center of the rectangle mask
@@ -247,10 +247,9 @@ classdef funs
 
           end
 
-          function [phaseCompensate, phi_spherical, summ] = TSM(comp_phase, curTemp, gTemp, hTemp, wavelength, X, Y, dx, dy, sign)
-            phi_spherical = ((X - gTemp).^2 * dx^2 / curTemp) + ((Y - hTemp).^2 * dy^2 / curTemp);
+          function [phaseCompensate, phi_spherical, sum] = TSM(comp_phase, curTemp, gTemp, hTemp, wavelength, X, Y, dx, dy, sign)
+            phi_spherical = ((X - gTemp).^2 * dx.^2 / curTemp) + ((Y - hTemp).^2 * dy.^2 / curTemp);
             phi_spherical = pi * phi_spherical / wavelength;
-
             if (sign)
                 phi_spherical = exp(1i * phi_spherical);
             else
@@ -266,232 +265,44 @@ classdef funs
             binary_phase = (phase_sca > 0.2);
 
             % Applying the summation and thresholding metric
-            summ = sum(sum(binary_phase));
+            sum = sum(sum(binary_phase));
 
           end
 
-          function [g_out, h_out, cur_out, sum_max] = brute_search(comp_phase, arrayCurvature, arrayXcenter, arrayYcenter, wavelength, X, Y, dx, dy, sign, vis)  
-            sum_max = 0;
-            cont = 0;
 
-            for curTemp = arrayCurvature
-                for gTemp = arrayXcenter
-                    for hTemp = arrayYcenter
-                        cont = cont + 1;
-            
-                        [phaseCompensate, phi_spherical, sum_val] = funs.TSM(comp_phase, curTemp, gTemp, hTemp, wavelength, X, Y, dx, dy, sign);
-            
-                        if (sum_val > sum_max)
-                            g_out = gTemp;
-                            h_out = hTemp;
-                            cur_out = curTemp;
-                            sum_max = sum_val;
-                        end
-
-                        if vis
-                            %We will eventually use this space
-                        end
-
-                    end
-                end
-            end
-
-          end
-
-          function [phaseCompensate] = fast_CNT(holo, Lambda, M, N, X, Y, dx, dy)
+          function [ft_holo] = fast_CNT(inp, wavelength, dx, dy)
             % Function for rapid compensation of phase maps of image plane off-axis DHM, operating in non-telecentric regimen
             % Inputs:
             % inp - The input intensity (captured) hologram
             % wavelength - Wavelength of the illumination source to register the DHM hologram
             % dx, dy - Pixel dimensions of the camera sensor used for recording the hologram
 
-            % Function for rapid compensation of phase maps of image plane off-axis DHM, operating in non-telecentric regimen
-            % Inputs:
-            % inp - The input intensity (captured) hologram
-            % wavelength - Wavelength of the illumination source to register the DHM hologram
-            % dx, dy - Pixel dimensions of the camera sensor used for recording the hologram
-            
-            k = 2*pi/Lambda;
-            
+            % wavelength = wavelength * 0.000001;
+            % dx = dx * 0.000001;
+            % dy = dy * 0.000001;
+
+            % Retrieving the input shape
+            inp = double(inp);
+            [M, N] = size(inp);
+            k = (2 * pi) / wavelength;
+
+            % Creating a mesh-grid to operate in world coordinates
+            x = 0:(N-1);
+            y = 0:(M-1);
+            [X, Y] = meshgrid(x - (N / 2), y - (M / 2)); % meshgrid XY
+
             % The spatial filtering process is executed
             disp('Spatial filtering process started.....');
-
-            [Xcenter, Ycenter, holo_filter, ROI_array] = funs.spatialFilterinCNT(holo, M, N);
-
+            [Xcenter, Ycenter, holo_filter, ROI_array] = funs.spatialFilterinCNT(inp, M, N);
             disp('Spatial filtering process finished.');
 
-            figure; colormap gray; imagesc(abs(holo_filter).^2);
-            title('holo filter');axis square
+            figure(); imshow(abs(holo_filter).^2, []); title('holo_filter');
+            axis equal; colormap gray; colorbar;
 
-            % Fourier transform of the hologram filtered
-            ft_holo = funs.FT(holo_filter);
-
-            figure; colormap gray; imagesc(abs(ft_holo).^2);
-            title('FT Filtered holo');axis square
-
-            % reference wave for the first compensation (global linear compensation)
-            ThetaXM = asin((N/2 - Xcenter) * Lambda / (N * dx));
-            ThetaYM = asin((M/2 - Ycenter) * Lambda / (M * dy));
-            reference = exp(1j * k * (sin(ThetaXM) * X * dx + sin(ThetaYM) * Y * dy));
-
-            % First compensation (tilting angle compensation)
-            comp_phase = holo_filter .* reference;
-            phase_c = angle(comp_phase);
-
-            % show the first compensation
-            minVal = min(phase_c(:));
-            maxVal = max(phase_c(:));
-            phase_normalized = (phase_c - minVal) / (maxVal - minVal);
-            binary_phase = (phase_normalized > 0.5);
-            %figure; colormap gray; imagesc(binary_phase);
-            %title('binary phase');axis square
-
-            % creating the new reference wave to eliminate the circular phase factors (second phase compensation)
-            m = abs(ROI_array(3) - ROI_array(1));
-            n = abs(ROI_array(4) - ROI_array(2));
-            Cx = (M * dx)^2 / (Lambda * m);
-            Cy = (N * dy)^2 / (Lambda * n);
-            cur = (Cx + Cy)/2;
-
-            % display the phase_normalized image
-            imshow(phase_normalized);
-
-            % use ginput to get the coordinates of a click
-            [x, y] = ginput(1);
-
-            % print out the coordinates
-            fprintf('The coordinates of the center of the spherical phase factor are: (%f, %f)\n', x, y);
-
-            p = x;
-            q = y;
-
-            g = ((M/2) - fix(p))/2;
-            h = ((N/2) - fix(q))/2;
-
-            % Let's test the sign of the spherical phase factor
-
-            s = max(M,N)*0.05;
-            step = max(M,N)*0.1;
-            perc = 0.05;
-            arrayCurvature = (cur - (cur*perc)) : (perc/2) : (cur + (cur*perc));
-            arrayXcenter = (g - s) : step : (g + s);
-            arrayYcenter = (h - s) : step : (h + s);
-
-            sign = true;
-            sum_max_True = funs.brute_search(comp_phase, arrayCurvature, arrayXcenter, arrayYcenter, Lambda, X, Y, dx, dy, sign, false);
-            % disp(sum_max_True);
-
-            sign = false;
-            sum_max_False = funs.brute_search(comp_phase, arrayCurvature, arrayXcenter, arrayYcenter, Lambda, X, Y, dx, dy, sign, false);
-            % disp(sum_max_False);
-
-            if (sum_max_True > sum_max_False)
-                sign = true;
-            else
-                sign = false;
-            end
-
-            % sign = true;
-
-            disp("Sign of spherical phase factor: " + string(sign));
-
-            step_g = max(M,N)*0.1;
-            step_h = step_g;
-            step_cur = 0.6*cur;
-
-            current_point = [cur, g, h];
-
-            [phaseCompensate, phi_spherical, current_value] = funs.TSM(comp_phase, current_point(1), current_point(2), current_point(3), Lambda, X, Y, dx, dy, sign);
-
-            % Create a figure with three subplots
-            figure;
-
-            % Plot the first image in the first subplot
-            subplot(1, 3, 1);
-            imagesc(angle(phi_spherical));
-            title('phi_spherical');axis square
-
-            % Plot the second image in the second subplot
-            subplot(1, 3, 2);
-            imagesc(angle(comp_phase));
-            title('comp_phase');axis square
-
-            % Plot the third image in the third subplot
-            subplot(1, 3, 3);
-            imagesc(phaseCompensate);
-            title('phaseCompensate');axis square
-
-            % Show the figure
-            sgtitle('Subplots');
-
-            disp('Starting the semiheuristic search of the accurate compensating parameters');
-
-            while true
-    
-                neighbors = [];
-                for dex = [-2 -1 0 1 2]
-                    for dey = [-2 -1 0 1 2]
-                        for dez = [-2 -1 0 1 2]
-                            if dex == 0 && dey == 0 && dez == 0
-                                continue
-                            end
-                            neighbor = [current_point(1) + dez*step_cur, current_point(2) + dex*step_g, current_point(3) + dey*step_h];
-                            neighbors = [neighbors; neighbor];
-                        end
-                    end
-                end
-    
-                optimal_neighbor = current_point;
-                optimal_value = current_value;
-                for neighbor = neighbors'
-        
-                    [phaseCompensate, phi_spherical, neighbor_value] = funs.TSM(comp_phase, neighbor(1), neighbor(2), neighbor(3), Lambda, X, Y, dx, dy, sign);
-        
-                    if neighbor_value > optimal_value
-                        optimal_neighbor = neighbor;
-                        optimal_value = neighbor_value;
-                        disp("Best neighbor found! " + string(optimal_value));
-            
-                        % Create a figure with three subplots
-                        figure
-                        subplot(1,3,1);
-                        imagesc(angle(phi_spherical));
-                        title('phi_spherical');axis square
-                        subplot(1,3,2);
-                        imagesc(angle(comp_phase));
-                        title('comp_phase');axis square
-                        subplot(1,3,3);
-                        imagesc(phaseCompensate);
-                        title('phaseCompensate');axis square
-            
-                    end
-                end
-    
-                if optimal_value > current_value
-                    current_point = optimal_neighbor;
-                    current_value = optimal_value;
-                else
-                    break
-                end
-    
-                step_g = step_g*0.5;
-                step_h = step_g;
-                step_cur = step_cur*0.5;
-    
-            end
-
-            phi_spherical = ((X - current_point(2)).^2 .* dx^2 ./ current_point(1)) + ((Y - current_point(3)).^2 .* dy^2 ./ current_point(1));
-            phi_spherical = pi * phi_spherical / Lambda;
-
-            if (sign)
-                phi_spherical = exp(1i * phi_spherical);
-            else
-                phi_spherical = exp(-1i * phi_spherical);
-            end
-
-            phaseCompensate = comp_phase .* phi_spherical;
-
-            disp('Phase compensation finished.');
+            % Fourier transform to the hologram filtered
+            ft_holo = fft2(holo_filter);
+            figure(); imshow(abs(ft_holo).^2, []); title('FT Filtered holo');
+            axis equal; colormap gray; colorbar;
 
           end
     end
