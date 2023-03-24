@@ -759,6 +759,8 @@ def fast_CNT(inp, wavelength, dx, dy):
     
     # Show the figure
     plt.show()
+    
+    print ("Starting the semiheuristic search of the accurate compensating parameters")
 
     while True:
         
