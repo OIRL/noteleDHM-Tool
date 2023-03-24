@@ -8,6 +8,20 @@ Full documentation and a user manual of noteleDHM can be found in:
 
 xxxxxxxx
 
+# Requirements
+
+Steps for installing needed libraries to run the python scripts (conda eviroments windows):
+
+conda install -c conda-forge numpy matplotlib
+
+conda install -c conda-forge opencv
+
+conda install -c conda-forge imageio
+
+conda install -c conda-forge scikit-image
+
+All the latter can be also install using 'pip'.
+
 # Credits
 
 •	noteleDHM is developed in MATLAB 2021a (version 9.19.0, R2021a, Natick, Massachusetts: The MathWorks Inc.) and Python 3.7.1 (2018).
