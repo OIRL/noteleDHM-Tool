@@ -9,7 +9,7 @@ in each dimension (dx and dy) and the illumination wavelength (Lambda).
 Dependencies: The code uses functions from the 'funs.py' script.
 
 Date: January 6, 2023
-Last update: March 17, 2023.
+Last update: March 24, 2023.
 
 Authors: Brian Bogue-Jimenez, Carlos Trujillo, and Ana Doblas
 """
@@ -46,142 +46,35 @@ plt.gca().set_aspect('equal', adjustable='box'); plt.show()
 #Variables and flags for hologram reconstruction (Default variables, change accordingly)
 #Lambda = 532*10**(-9)
 Lambda = 633*10**(-9)
-k = 2*np.pi/Lambda
 dx = 6.9*10**(-6)
 dy = 6.9*10**(-6)
 
+#Different available optimization methods (only meeded for automatic method)
+#0: FMC 1: FMU 2: FSO 3: SA 4: PTS 5: GA 6: PS 7: GA+PS  (See documentation for further details)
+algo = 7; #Select method as desired
+
+#Two available cost functions (only needed for automatic method)
+#cost = 1 # 0 - BIN -- 1 - SD (See documentation for further details)
+cost = 1 #Select function as desired
+
 print ('Phase compensation starts...')
 
-'''
-0: Manual determination of the M&N and H&G coordinates for no-tele compensation. 
-1: Automatic determination of these parameters.
-'''
+###################################################################################
+#0: Manual determination of the M&N and H&G coordinates for no-tele compensation.## 
+#1: Automatic determination of these parameters. ##################################
+###################################################################################
 auto = 0
 
 if auto:
 
-    #Let's go to the spatial frequency domain
-    FT_holo = funs.FT(holo);
-
-    #Let's threshold that FT
-    BW = funs.threshold_FT(FT_holo, M, N)
-
-    #Get the +1 D.O. term region and coordinates
-    #start = timer()	#Start to count time
-    plus_coor, m, n, p, q = funs.get_plus1(BW)
-    #print("Processing time get_plus1:", timer()-start) #Time for get_plus1 execution
-
-    #Compensating the tilting angle first
-    holoCompensate = funs.filter_center_plus1(FT_holo,plus_coor,m,n,Lambda,X,Y,dx,dy,k)
-
-    # Binarized Spherical Aberration
-    BW = funs.binarize_compensated_plus1(holoCompensate)
-
-    # Get the center of the remaining spherical phase factor for the 2nd compensation
-    g, h = funs.get_g_and_h(BW)
+    start = timer()	#Start to count time
     
-    #Let's create the new reference wave to eliminate the circular phase factors. 
-    Cx = np.power((M * dx), 2)/(Lambda * m)
-    Cy = np.power((N * dy), 2)/(Lambda * n)
-    cur = (Cx + Cy)/2
-
-    #Let's select the sign of the compensating spherical phase factor
-    sign = True
-    
-    #Let's built the spherical phase factor for compensation
-    phi_spherical = funs.phi_spherical_C(cur, g, h, dx, X, Y, Lambda)
-    
-    if (sign):
-        phase_mask = np.exp((1j)*phi_spherical)
-    else:
-        phase_mask = np.exp((-1j)*phi_spherical)
-
-    #Let's apply the second (quadratic) compensation according to Kemper
-    corrected_image = holoCompensate * phase_mask
-    
-    plt.figure(); plt.imshow(np.angle(corrected_image), cmap='gray'); plt.title('Non-optimized compensated image'); 
+    # Numerical compensation using an automatic method to determine the +1 ROI and center of the spherical phase factor
+    output = funs.automatic_method(holo, M, N, X, Y, Lambda, dx, dy, algo, cost)
+    plt.figure(); plt.imshow(np.angle(output), cmap='gray'); plt.title('Compensated imaged after optimization'); 
     plt.gca().set_aspect('equal', adjustable='box'); plt.show()
-    
-    '''
-    Up to this point the phase compensation for no telecentric DHM holograms is finished according to Kemper
-    '''
-    
-    # Set the default random number generator for reproducibility
-    np.random.seed(0)
 
-    #Different available optimization methods
-    alg_array = ["FMC","FMU","FSO","SA","PTS","GA","PS","GA+PS"]
-    #0: FMC 1: FMU 2: FSO 3: SA 4: PTS 5: GA 6: PS 7: GA+PS  (See documentation for further details)
-    i = 7; #Select method as desired
-    alg = alg_array[i]
-
-    #Two available const functions
-    cost_fun = ['BIN cost function','STD cost function']
-    #cost = 1 # 0 - BIN -- 1 - SD (See documentation for further details)
-    cost = 1 
-    print ('Selected cost function: ', cost_fun[cost])
-
-    # Define the function phi_spherical_C for the optimization (it's the same used before, but built for optimization)
-    phi_spherical_C = lambda C: (np.pi / (C * Lambda)) * ((X - (g + 1))**2 + (Y - (h + 1))**2) * (dx**2)
-
-    # Set the cost function
-    if cost == 0:
-        minfunc = lambda t: funs.bin_CF_noTele_BAR_1d(phi_spherical_C, t, holoCompensate, M, N, sign)
-    elif cost == 1:
-        minfunc = lambda t: funs.std_CF_noTele_BAR_1d(phi_spherical_C, t, holoCompensate, M, N, sign)
-  
-    #Determination (minimization) of the optimal parameter (C -curvature) for the accurate phase compensation of no tele DHM holograms.
-
-    # Define the lower and upper bounds of the initial population range (Warning: Modifying these settings may cause unexpected behavior. Proceed with caution)
-    lb = -0.5
-    ub = 0.5
-    lb = cur + cur * lb
-    ub = cur + cur * ub
-
-    print ('cur :', cur)
-    print ('lb and ub: ', lb, ub)
-
-    # Minimize the cost function using the selected algorithm
-    if alg == "GA+PS":
-        print ('Running the hybrid GA + PS strategy with the', cost_fun[cost])
-        Cy_opt = funs.hybrid_ga_ps(minfunc, lb, ub)
-    elif alg == "GA":
-        print ('Running the genetic algorithm with the', cost_fun[cost])
-        Cy_opt = funs.genetic_algorithm(minfunc, lb, ub)
-    elif alg == "PS":
-        print ('Running the pattern search algorithm with the', cost_fun[cost])
-        Cy_opt = funs.pattern_search(minfunc, cur)
-    elif alg == "FMC": #fmincon via 'NonlinearConstraint'
-        print ('Running the NonlinearConstraint (fmincon) algorithm with the', cost_fun[cost])
-        Cy_opt = funs.fmincon(minfunc, lb, ub, cur)
-    elif alg == "FMU":  #fminunc via fmin_ncg
-        print ('Running the fmin_ncg (fminunc) algorithm with the', cost_fun[cost])
-        Cy_opt = funs.fminunc(minfunc, cur)
-    elif alg == "FSO": #fsolve
-        print ('Running the function solver (fsolver) algorithm with the', cost_fun[cost])
-        Cy_opt = funs.fsolver(minfunc, cur)
-    elif alg == "PTS": #paretosearch
-        print ('Running the pareto search strategy with the', cost_fun[cost])
-        Cy_opt = funs.pareto_search(minfunc, cur)
-    elif alg == "SA": #simulannealbnd
-        print ('Running the simulated annualing algortihm with the', cost_fun[cost])
-        Cy_opt = funs.simulannealbnd(minfunc, lb, ub)
-    else:
-        print('No proper optimization method selected')
-
-    #Let's compute the optimized compensation phase factor
-    phi_spherical = phi_spherical_C(Cy_opt)
-
-    print ('C optimized: ', Cy_opt)
-
-    if (sign):
-        phase_mask = np.exp((1j)*phi_spherical)  # Compute the phase mask by taking the exponential of 1j times phi_spherical.
-    else:
-        phase_mask = np.exp((-1j)*phi_spherical)  # Compute the phase mask by taking the exponential of -1j times phi_spherical.
-        
-    corrected_image = holoCompensate * phase_mask #Compensation
-    plt.figure(); plt.imshow(np.angle(corrected_image), cmap='gray'); plt.title('Corrected_image after optimization'); 
-    plt.gca().set_aspect('equal', adjustable='box'); plt.show()
+    print("Processing time automatic method:", timer()-start) #Time for CNT execution   
 
 else: 
     
@@ -192,4 +85,4 @@ else:
     plt.figure(); plt.imshow(np.angle(output), cmap='gray'); plt.title('Semiheuristically optimized compensated image'); 
     plt.gca().set_aspect('equal', adjustable='box'); plt.show()
     
-    print("Processing time CNT (or fastCNT):", timer()-start) #Time for CNT execution    
+    print("Processing time fastCNT:", timer()-start) #Time for CNT execution    

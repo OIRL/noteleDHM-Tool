@@ -25,7 +25,7 @@ Functions:
 - brute: finds the minimum value of a cost function in the whole search range with a fixed number of steps.
 
 Date: January 6, 2023
-Updated: March 10, 2023
+Updated: March 24, 2023
 
 Authors: Brian Bogue-Jimenez, Carlos Trujillo, and Ana Doblas
 """
@@ -525,7 +525,133 @@ def hybrid_ga_ps(minfunc, lb, ub):
     print("Processing time hybrid_ga_ps:", timer()-start) #Time for SA execution  
     return Cy_opt
 
+def automatic_method(holo, M, N, X, Y, Lambda, dx, dy, algo, cost):
+
+    k = 2*np.pi/Lambda
     
+    #Let's go to the spatial frequency domain
+    FT_holo = FT(holo);
+
+    #Let's threshold that FT
+    BW = threshold_FT(FT_holo, M, N)
+
+    #Get the +1 D.O. term region and coordinates
+    #start = timer()	#Start to count time
+    plus_coor, m, n, p, q = get_plus1(BW)
+    #print("Processing time get_plus1:", timer()-start) #Time for get_plus1 execution
+
+    #Compensating the tilting angle first
+    holoCompensate = filter_center_plus1(FT_holo,plus_coor,m,n,Lambda,X,Y,dx,dy,k)
+
+    # Binarized Spherical Aberration
+    BW = binarize_compensated_plus1(holoCompensate)
+
+    # Get the center of the remaining spherical phase factor for the 2nd compensation
+    g, h = get_g_and_h(BW)
+    
+    #Let's create the new reference wave to eliminate the circular phase factors. 
+    Cx = np.power((M * dx), 2)/(Lambda * m)
+    Cy = np.power((N * dy), 2)/(Lambda * n)
+    cur = (Cx + Cy)/2
+
+    #Let's select the sign of the compensating spherical phase factor
+    sign = True
+    
+    #Let's built the spherical phase factor for compensation
+    phi_spherical = phi_spherical_C(cur, g, h, dx, X, Y, Lambda)
+    
+    if (sign):
+        phase_mask = np.exp((1j)*phi_spherical)
+    else:
+        phase_mask = np.exp((-1j)*phi_spherical)
+
+    #Let's apply the second (quadratic) compensation according to Kemper
+    corrected_image = holoCompensate * phase_mask
+    
+    plt.figure(); plt.imshow(np.angle(corrected_image), cmap='gray'); plt.title('Non-optimized compensated image'); 
+    plt.gca().set_aspect('equal', adjustable='box'); plt.show()
+    
+    '''
+    Up to this point the phase compensation for no telecentric DHM holograms is finished according to Kemper
+    '''
+    
+    # Set the default random number generator for reproducibility
+    np.random.seed(0)
+
+    #Different available optimization methods
+    alg_array = ["FMC","FMU","FSO","SA","PTS","GA","PS","GA+PS"]
+    alg = alg_array[algo]
+
+    #Two available const functions
+    cost_fun = ['BIN cost function','STD cost function']
+    print ('Selected cost function: ', cost_fun[cost])
+
+    # Define the function phi_spherical_C for the optimization (it's the same used before, but built for optimization)
+    phi_spherical_C_opt = lambda C: (np.pi / (C * Lambda)) * ((X - (g + 1))**2 + (Y - (h + 1))**2) * (dx**2)
+
+    # Set the cost function
+    if cost == 0:
+        minfunc = lambda t: bin_CF_noTele_BAR_1d(phi_spherical_C_opt, t, holoCompensate, M, N, sign)
+    elif cost == 1:
+        minfunc = lambda t: std_CF_noTele_BAR_1d(phi_spherical_C_opt, t, holoCompensate, M, N, sign)
+  
+    #Determination (minimization) of the optimal parameter (C -curvature) for the accurate phase compensation of no tele DHM holograms.
+
+    # Define the lower and upper bounds of the initial population range (Warning: Modifying these settings may cause unexpected behavior. Proceed with caution)
+    lb = -0.5
+    ub = 0.5
+    lb = cur + cur * lb
+    ub = cur + cur * ub
+
+    print ('cur :', cur)
+    print ('lb and ub: ', lb, ub)
+
+    # Minimize the cost function using the selected algorithm
+    if alg == "GA+PS":
+        print ('Running the hybrid GA + PS strategy with the', cost_fun[cost])
+        Cy_opt = hybrid_ga_ps(minfunc, lb, ub)
+    elif alg == "GA":
+        print ('Running the genetic algorithm with the', cost_fun[cost])
+        Cy_opt = genetic_algorithm(minfunc, lb, ub)
+    elif alg == "PS":
+        print ('Running the pattern search algorithm with the', cost_fun[cost])
+        Cy_opt = pattern_search(minfunc, cur)
+    elif alg == "FMC": #fmincon via 'NonlinearConstraint'
+        print ('Running the NonlinearConstraint (fmincon) algorithm with the', cost_fun[cost])
+        Cy_opt = fmincon(minfunc, lb, ub, cur)
+    elif alg == "FMU":  #fminunc via fmin_ncg
+        print ('Running the fmin_ncg (fminunc) algorithm with the', cost_fun[cost])
+        Cy_opt = fminunc(minfunc, cur)
+    elif alg == "FSO": #fsolve
+        print ('Running the function solver (fsolver) algorithm with the', cost_fun[cost])
+        Cy_opt = fsolver(minfunc, cur)
+    elif alg == "PTS": #paretosearch
+        print ('Running the pareto search strategy with the', cost_fun[cost])
+        Cy_opt = pareto_search(minfunc, cur)
+    elif alg == "SA": #simulannealbnd
+        print ('Running the simulated annualing algortihm with the', cost_fun[cost])
+        Cy_opt = simulannealbnd(minfunc, lb, ub)
+    else:
+        print('No proper optimization method selected')
+
+    #Let's compute the optimized compensation phase factor
+    phi_spherical = phi_spherical_C_opt(Cy_opt)
+
+    print ('C optimized: ', Cy_opt)
+
+    if (sign):
+        phase_mask = np.exp((1j)*phi_spherical)  # Compute the phase mask by taking the exponential of 1j times phi_spherical.
+    else:
+        phase_mask = np.exp((-1j)*phi_spherical)  # Compute the phase mask by taking the exponential of -1j times phi_spherical.
+        
+    corrected_image = holoCompensate * phase_mask #Compensation
+    
+    return corrected_image
+
+##################################################################
+################Functions for manual determination################
+##################################################################
+   
 # Functions for phase compensation using manually input parameters
 def spatialFilterinCNT(inp, M, N):
     ROI_array = np.zeros(4)
@@ -742,6 +868,7 @@ def fast_CNT(inp, wavelength, dx, dy):
     
     phaseCompensate, phi_spherical, current_value = TSM(comp_phase, current_point[0], current_point[1], current_point[2], wavelength, X, Y, dx, dy, sign)
     
+    '''
     # Create a figure with three subplots
     fig, (ax1, ax2, ax3) = plt.subplots(1, 3)
                 
@@ -759,6 +886,7 @@ def fast_CNT(inp, wavelength, dx, dy):
     
     # Show the figure
     plt.show()
+    '''
     
     print ("Starting the semiheuristic search of the accurate compensating parameters")
 
@@ -766,7 +894,7 @@ def fast_CNT(inp, wavelength, dx, dy):
         
         neighbors = []
         for dex in [-2, -1, 0, 1, 2]:
-            for dey in [-2, -1, 0, 1, 2]:
+            for dey in [-3 -2, -1, 0, 1, 2]:
                 for dez in [-2, -1, 0, 1, 2]:
                     if dex == dey == dez == 0:
                         continue
@@ -784,6 +912,8 @@ def fast_CNT(inp, wavelength, dx, dy):
                 optimal_neighbor = neighbor
                 optimal_value = neighbor_value
                 print ("Best neighbor found! ", optimal_value)
+                
+                '''
                 # Create a figure with three subplots
                 fig, (ax1, ax2, ax3) = plt.subplots(1, 3)
                 
@@ -801,7 +931,8 @@ def fast_CNT(inp, wavelength, dx, dy):
                 
                 # Show the figure
                 plt.show()
-        
+                '''
+                
         #if np.abs(optimal_value - current_value) < optimal_value*0.00005:
         #    break
         #el
