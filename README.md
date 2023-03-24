@@ -29,8 +29,11 @@ All the latter can be also install using 'pip'.
 •	For the unwrapping step in the MATLAB GUI, nonteleDHM implements the code developed by Herráez et.al. [2,3]
 
 ## References 
+
 [1] J. Min, B. Yao, S. Ketelhut, C. Engwer, B. Greve, B. Kemper, Opt. Lett. 42 (2017) 227 - 230. https://doi.org/10.1364/OL.42.000227.
+
 [2] M. A. Herraez, D. R. Burton, M. J. Lalor, and M. A. Gdeisat, "Fast two-dimensional phase-  unwrapping algorithm based on sorting by reliability following a noncontinuous path", Applied Optics, Vol. 41, Issue 35, pp. 7437-7444 (2002).
+
 [3] M. F. Kasim, "Fast 2D phase unwrapping implementation in MATLAB", available in https://github.com/mfkasim91/unwrap_phase/.
 
 # Citation
