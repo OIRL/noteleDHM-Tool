@@ -2,7 +2,7 @@
 
 noteleDHM is a MATLAB and Python implementation developed collaborating between the Optical Imaging Research Laboratory (Department of Electrical and Computer Engineering at the University of Memphis) and the Applied Optics Research Group (School of Applied Sciences and Eng., Universidad EAFIT, Medellin, Colombia). noteleDHM MATLAB App is a free, user-friendly tool, providing a streamlined strategy for reconstructing off-axis holograms recorded using a digital holographic microscope (DHM) operating in non-telecentric mode. This implementation is based on a spectral method [1] in combination with a minimization algorithm that finds the parameters of the spherical wavefront to reconstruct a quantitative phase image without or minimum phase perturbations due to the interference angle of the off-axis configuration and the non-telecentric configuration in the DHM imaging system. The input parameters of the noteleDHM method are the sensor's pixel size and the wavelength of the light source. The noteleDHM computational algorithm offers an open-source reconstruction tool for the DHM community.
 
-# Documenation
+# Documentation
 
 Full documentation and a user manual of noteleDHM can be found in:
 
