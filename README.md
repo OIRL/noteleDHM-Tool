@@ -24,7 +24,7 @@ To install the required libraries for running the noteleDHM-toll Python scripts 
 
     conda install -c conda-forge scikit-image
 
-  Alternatively, you can also install all of the libraries using 'pip'.
+    Alternatively, you can also install all of the libraries using 'pip'.
 
 # Credits
 
