@@ -48,6 +48,12 @@ If using noteleDHM for publication, please kindly cite the following:
 
 # Support
 
-If you use noteleDHM and find a bug, please contact us via email and we will address the problem. Our emails are opticalimagingresearchlab@gmail.com, catrujilla@eafit.edu.co, adoblas@memphis.edu.
+If you use noteleDHM and find a bug, please contact us via email and we will address the problem. Our emails are:
+
+opticalimagingresearchlab@gmail.com
+
+catrujilla@eafit.edu.co
+
+adoblas@memphis.edu
 
 
