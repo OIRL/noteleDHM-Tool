@@ -42,7 +42,7 @@ dy = 6.9*10^(-6);
 
 %Different available optimization methods (only meeded for automatic method)
 %1: FMC 2: FMU 3: FSO 4: SA 5: PTS 6: GA 7: PS 8: GA+PS  (See documentation for further details)
-algo = 7; %Select method as desired
+algo = 8; %Select method as desired
 
 %Two available cost functions (only needed for automatic method)
 %cost = 1 # 0 - BIN -- 1 - SD (See documentation for further details)
@@ -65,7 +65,7 @@ if auto
     toc
 
     figure; colormap gray; imagesc(angle(out));
-    title('Compensated image after automatic optimization');axis square
+    title('Compensated image after automatic optimization');
 
 else
     
@@ -75,6 +75,6 @@ else
     toc
 
     figure; colormap gray; imagesc(angle(out));
-    title('Semiheuristically optimized compensated image');axis square
+    title('Semiheuristically optimized compensated image');
 
 end

@@ -1,7 +1,7 @@
 classdef funs
     methods(Static)
 
-          function [holo,M,N,X,Y] = holo_read(filename,vargin)
+          function [holo,M,N,m,n] = holo_read(filename,vargin)
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             % Title: holo_read                                                             %
             %                                                                              %
@@ -36,7 +36,7 @@ classdef funs
 %                 holo = holo;
 %             end
             [N,M] = size(holo);    
-            [X,Y] = meshgrid(-M/2+1:M/2,-N/2+1:N/2); %The order of the variables must be switched (MATLAB)
+            [m,n] = meshgrid(-M/2+1:M/2,-N/2+1:N/2); %The order of the variables must be switched
 
           end
 
@@ -169,7 +169,7 @@ classdef funs
             disp("G: "+string(g)+" H: "+string(h));
           end
 
-          function [J] = bin_CF_noTele_BAR_1d(fun,seed_cur,holoCompensate,M,N,sign)
+          function [J] = bin_CF_noTele_BAR_1d(fun,seed_cur,holoCompensate,M,N)
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             % Title: CF_noTele_BAR0531                                                     %
             %                                                                              %                                                                        
@@ -180,11 +180,7 @@ classdef funs
             % Email: adoblas@memphis.edu                                                   %
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             phi_spherical = fun(seed_cur);
-            if sign
-                phase_mask = exp((1j)*phi_spherical);
-            else
-                phase_mask = exp((-1j)*phi_spherical);
-            end
+            phase_mask = exp((-1j)*phi_spherical);
             corrected_image = holoCompensate .* phase_mask;
             phase = angle(corrected_image);
             phase = phase + pi; 
@@ -192,7 +188,7 @@ classdef funs
             J = M*N - sum(ib(:));
           end    
           
-          function [J] = std_CF_noTele_BAR_1d(fun,Cx,holoCompensate,M,N, sign)
+          function [J] = std_CF_noTele_BAR_1d(fun,Cx,holoCompensate,M,N)
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             % Title: CF_noTele_BAR0531                                                     %
             %                                                                              %                                                                        
@@ -204,11 +200,7 @@ classdef funs
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             phi_spherical = fun(Cx);
             %     phi_spherical = fun(Cx,Cy);
-            if sign
-                phase_mask = exp((1j)*phi_spherical);
-            else
-                phase_mask = exp((-1j)*phi_spherical);
-            end
+            phase_mask = exp((-1j)*phi_spherical);
             corrected_image = holoCompensate .* phase_mask;
             phase = angle(corrected_image);
             phase = phase + pi; 
@@ -272,7 +264,7 @@ classdef funs
 
             corrected_image = holoCompensate .* phase_mask;
             figure; colormap gray; imagesc(angle(corrected_image));
-            title('Non-optimized compensated image');
+            title('Non-optimized compensated image');axis square
             
             % Up to this point the phase compensation for no telecentric DHM holograms is finished according to Kemper
     
@@ -289,9 +281,9 @@ classdef funs
             disp(['Selected cost function: ', cost_fun{cost+1}])
 
             if cost == 0
-                minfunc = @(t)funs.bin_CF_noTele_BAR_1d(phi_spherical_C,t,holoCompensate,M,N,sign);
+                minfunc = @(t)funs.bin_CF_noTele_BAR_1d(phi_spherical_C,t,holoCompensate,M,N);
             elseif cost == 1 
-                minfunc = @(t)funs.std_CF_noTele_BAR_1d(phi_spherical_C,t,holoCompensate,M,N,sign);
+                minfunc = @(t)funs.std_CF_noTele_BAR_1d(phi_spherical_C,t,holoCompensate,M,N);
             end  %select cost func
 
             %Determination (minimization) of the optimal parameter (C -curvature) for the accurate phase compensation of no tele DHM holograms.
@@ -306,7 +298,6 @@ classdef funs
 
             % Options for the Optimization functions
             if alg == "GA"
-                disp(['Running the genetic algorithm with the ', cost_fun{cost+1}])
                 init_pop_range_1d = @(C, lb, ub) [C+C*lb;C+C*ub];
                 options = optimoptions(@ga,...
                 'InitialPopulationMatrix', x0,...
@@ -314,7 +305,6 @@ classdef funs
                 'PopulationSize',15, ... % this speeds up convergence but not needed, default is 50 when nvars<=5
                 'SelectionFcn','selectionremainder');
             elseif alg == "GA+PS"
-                disp(['Running the hybrid (GA + PS) algorithm with the ', cost_fun{cost+1}])
                 init_pop_range_1d = @(C, lb, ub) [C+C*lb;C+C*ub];
                 hybridopts = optimoptions('patternsearch','Display','final');
                 options = optimoptions('ga', 'Display', 'final','HybridFcn', {@patternsearch,hybridopts},...
@@ -339,6 +329,7 @@ classdef funs
             substr = alg.split('+');
 
             if substr(1) == "GA"
+                disp(['Running the genetic algorithm (or hybrid) with the ', cost_fun{cost+1}])
                 [out,costs] = ga(minfunc,nvars,[],[],[],[],[],[],[],options);
             elseif alg == "PS"
                 disp(['Running the pattern search algorithm with the ', cost_fun{cost+1}])
