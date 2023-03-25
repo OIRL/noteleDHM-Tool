@@ -9,7 +9,7 @@ in each dimension (dx and dy) and the illumination wavelength (Lambda).
 Dependencies: The code uses functions from the 'funs.m' script.
 
 Date: January 6, 2023
-Last update: March 24, 2023.
+Last update: March 25, 2023.
 
 Authors: Brian Bogue-Jimenez, Carlos Trujillo, and Ana Doblas
 %}
@@ -26,7 +26,7 @@ clear all% clear of memory all variable
 % ["4cm_20x_bigcakes.tiff", "-4cm_20x_star.tiff", "4cm_20x_usaf.tiff", "RBCnotele50x.tiff"]
 
 % Loading image file (hologram) to process
-user_input = 'RBCnotele50x.tiff';
+user_input = '4cm_20x_bigcakes.tiff';
 filename = ['data/', user_input];
 disp(['Non-telecentric DHM hologram: ', filename]);
 
@@ -55,7 +55,7 @@ disp('Phase compensation starts...');
 1: Automatic determination of these parameters.
 %}
 
-auto = 0;
+auto = 1;
 
 if auto
     
