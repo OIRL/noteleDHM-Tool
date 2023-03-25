@@ -567,7 +567,8 @@ def automatic_method(holo, M, N, X, Y, Lambda, dx, dy, algo, cost):
         phase_mask = np.exp((1j)*phi_spherical)
     else:
         phase_mask = np.exp((-1j)*phi_spherical)
-
+    
+    '''
     #Let's apply the second (quadratic) compensation according to Kemper
     corrected_image = holoCompensate * phase_mask    
     
@@ -588,8 +589,7 @@ def automatic_method(holo, M, N, X, Y, Lambda, dx, dy, algo, cost):
     
     # Show the figure
     plt.show()
-    
-    
+    '''
     
     plt.figure(); plt.imshow(np.angle(corrected_image), cmap='gray'); plt.title('Non-optimized compensated image'); 
     plt.gca().set_aspect('equal', adjustable='box'); plt.show()
