@@ -265,10 +265,10 @@ classdef funs
             end
 
 %             figure; colormap gray; imagesc(angle(phase_mask));
-%             title('Compensating spherical phase factor');axis square
+%             title('Compensating spherical phase factor')
 % 
 %             figure; colormap gray; imagesc(angle(holoCompensate));
-%             title('holoCompensate to compensate');axis square
+%             title('holoCompensate to compensate')
 
             corrected_image = holoCompensate .* phase_mask;
             figure; colormap gray; imagesc(angle(corrected_image));
@@ -408,7 +408,7 @@ classdef funs
             Ycenter = x1_ROI + (x2_ROI - x1_ROI)/2;
             Xcenter = y1_ROI + (y2_ROI - y1_ROI)/2;
 
-            holo_filter = zeros(M, N);
+            holo_filter = zeros(N, M);
 
             holo_filter(x1_ROI:x2_ROI, y1_ROI:y2_ROI, :) = 1;
            
@@ -436,12 +436,13 @@ classdef funs
             phase_sca = (phaseCompensate - minVal) / (maxVal - minVal);
             
             %STD:
-            %summ = 1- std(std(phase_sca));
+            summ = 1 - std(phase_sca(:));
             
             %TSM:
-            binary_phase = (phase_sca > 0.5);
+            %binary_phase = (phase_sca > 0.2);
+
             % Applying the summation and thresholding metric
-            summ = sum(sum(binary_phase));
+            %summ = sum(binary_phase(:));
             
           end
 
@@ -509,8 +510,7 @@ classdef funs
 
             disp('Spatial filtering process finished.');
 
-            %figure; colormap gray; imagesc(abs(holo_filter).^2);
-            %title('holo filter');axis square
+            %figure, imagesc(abs(holo_filter).^2), colormap gray, title('holo filter')
 
             % Fourier transform of the hologram filtered
             ft_holo = funs.FT(holo_filter);
@@ -519,8 +519,8 @@ classdef funs
             %title('FT Filtered holo');axis square
 
             % reference wave for the first compensation (global linear compensation)
-            ThetaXM = asin((N/2 - Xcenter) * Lambda / (N * dx));
-            ThetaYM = asin((M/2 - Ycenter) * Lambda / (M * dy));
+            ThetaXM = asin((M/2 - Xcenter) * Lambda / (M * dx));
+            ThetaYM = asin((N/2 - Ycenter) * Lambda / (N * dy));
             reference = exp(1j * k * (sin(ThetaXM) * X * dx + sin(ThetaYM) * Y * dy));
 
             % First compensation (tilting angle compensation)
@@ -557,29 +557,19 @@ classdef funs
             g = ((M/2) - fix(p))/2;
             h = ((N/2) - fix(q))/2;
 
-            % Let's test the sign of the spherical phase factor
-
-            s = max(M,N)*0.1;
-            step = max(M,N)*0.05;
+            % Let's find the sign of the spherical phase factor
+            %(3D Grid search to assess this value)
+            s = 2;
             perc = 0.1;
-            arrayCurvature = (cur - (cur*perc)) : (perc/2) : (cur + (cur*perc));
-            arrayXcenter = (g - s) : step : (g + s);
-            arrayYcenter = (h - s) : step : (h + s);
-
-%             size1 = length(arrayCurvature);
-%             size2 = length(arrayXcenter);
-%             size3 = length(arrayYcenter);
-%             disp("Size of the arrays: " + size1);
-%             disp("Size of the arrays: " + size2);
-%             disp("Size of the arrays: " + size3);
+            arrayCurvature = [(cur - (cur*perc)) cur (cur + (cur*perc))];
+            arrayXcenter = [(g - 2*s) (g - s) g (g + s) (g + 2*s)];
+            arrayYcenter = [(h - 2*s) (h - s) h (h + s) (h + 2*s)];
 
             sign = true;
-            sum_max_True = funs.brute_search(comp_phase, arrayCurvature, arrayXcenter, arrayYcenter, Lambda, X, Y, dx, dy, sign, false);
-            % disp(sum_max_True);
+            [~, ~, ~, sum_max_True] = funs.brute_search(comp_phase, arrayCurvature, arrayXcenter, arrayYcenter, Lambda, X, Y, dx, dy, sign, false);
 
             sign = false;
-            sum_max_False = funs.brute_search(comp_phase, arrayCurvature, arrayXcenter, arrayYcenter, Lambda, X, Y, dx, dy, sign, false);
-            % disp(sum_max_False);
+            [~, ~, ~, sum_max_False] = funs.brute_search(comp_phase, arrayCurvature, arrayXcenter, arrayYcenter, Lambda, X, Y, dx, dy, sign, false);
 
             if (sum_max_True > sum_max_False)
                 sign = true;
@@ -587,7 +577,7 @@ classdef funs
                 sign = false;
             end
 
-            % sign = true;
+            %sign = true;
 
             disp("Sign of spherical phase factor: " + string(sign));
 
@@ -625,9 +615,12 @@ classdef funs
             while true
     
                 neighbors = [];
-                for dex = [-3 -2 -1 0 1 2 3]
-                    for dey = [-3 -2 -1 0 1 2 3]
-                        for dez = [-3 -2 -1 0 1 2 3]
+%                 for dex = [-3 -2 -1 0 1 2 3]
+%                     for dey = [-3 -2 -1 0 1 2 3]
+%                         for dez = [-3 -2 -1 0 1 2 3]
+                for dex = [-2 -1 0 1 2]
+                    for dey = [-2 -1 0 1 2]
+                        for dez = [-2 -1 0 1 2]
                             if dex == 0 && dey == 0 && dez == 0
                                 continue
                             end
@@ -686,18 +679,6 @@ classdef funs
             end
 
             phaseCompensate = comp_phase .* phi_spherical;
-
-%                         % Create a figure with three subplots
-%                         figure
-%                         subplot(1,3,1);
-%                         imagesc(angle(phi_spherical));
-%                         title('phi_spherical');axis square
-%                         subplot(1,3,2);
-%                         imagesc(angle(comp_phase));
-%                         title('comp_phase');axis square
-%                         subplot(1,3,3);
-%                         imagesc(angle(phaseCompensate));
-%                         title('phaseCompensate');axis square
 
             disp('Phase compensation finished.');
 

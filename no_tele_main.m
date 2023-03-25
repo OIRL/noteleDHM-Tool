@@ -26,7 +26,7 @@ clear all% clear of memory all variable
 % ["4cm_20x_bigcakes.tiff", "-4cm_20x_star.tiff", "4cm_20x_usaf.tiff", "RBCnotele50x.tiff"]
 
 % Loading image file (hologram) to process
-user_input = '4cm_20x_bigcakes.tiff';
+user_input = 'RBCnotele50x.tiff';
 filename = ['data/', user_input];
 disp(['Non-telecentric DHM hologram: ', filename]);
 
@@ -40,7 +40,7 @@ Lambda = 633*10^(-9);
 dx = 6.9*10^(-6);
 dy = 6.9*10^(-6);
 
-%Different available optimization methods (only meeded for automatic method)
+%Different available optimization methods (only needed for automatic method)
 %1: FMC 2: FMU 3: FSO 4: SA 5: PTS 6: GA 7: PS 8: GA+PS  (See documentation for further details)
 algo = 8; %Select method as desired
 
@@ -55,7 +55,7 @@ disp('Phase compensation starts...');
 1: Automatic determination of these parameters.
 %}
 
-auto = 1;
+auto = 0;
 
 if auto
     
