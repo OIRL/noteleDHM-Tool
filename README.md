@@ -13,11 +13,15 @@ xxxxxxxx
 To install the required libraries for running the noteleDHM-toll Python scripts in a Conda environment on Windows, follow these steps:
 
 1. Open the command prompt or Anaconda prompt.
+  
 2. Type the following commands to install the necessary libraries:
 
 conda install -c conda-forge numpy matplotlib
+
 conda install -c conda-forge opencv
+
 conda install -c conda-forge imageio
+
 conda install -c conda-forge scikit-image
 
 Alternatively, you can also install all of the libraries using 'pip'.
