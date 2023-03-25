@@ -39,6 +39,7 @@ All the latter can be also install using 'pip'.
 # Citation
 
 If using noteleDHM for publication, please kindly cite the following:
+
 •	B. Bogue-Jimenez, C. Trujillo, and A. Doblas, “Comprehensive Tool for a Phase Compensation Reconstruction Method in Digital Holographic Microscopy Operating in Non-Telecentric Regime,” Computer Physics Communications, under review (2023).
 
 # Support
