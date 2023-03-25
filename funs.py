@@ -213,8 +213,8 @@ def get_plus1(bw):
     
     # values for p,q,m and n (min and kemper paper)
     box_size = terms[0].bbox
-    m = np.abs(plus1[0] - plus1[2])/2
-    n = np.abs(plus1[1] - plus1[3])/2
+    m = np.abs(plus1[0] - plus1[2])
+    n = np.abs(plus1[1] - plus1[3])
     p = p_and_q[0]
     q = p_and_q[1]
     #print(f"P: {p} Q: {q}"); print(f"M: {m} N: {n}")
@@ -311,7 +311,7 @@ def get_g_and_h(bw):
     M, N = bw.shape
     true_center = (N / 2, M / 2)
 
-    g_and_h = np.abs(np.array(block_center) - np.array(true_center))
+    g_and_h = (np.array(block_center) - np.array(true_center))/1
 
     #Only if you wanna paint the rectangle and other stuff
     # Create a figure and plot the data
@@ -329,7 +329,7 @@ def get_g_and_h(bw):
 
     return g, h
 
-def phi_spherical_C(C, g, h, dx, X, Y, Lambda):
+def phi_spherical_C(C, g, h, dx, dy, X, Y, Lambda):
     '''
     Variables:
     C: float variable indicatinng the phase factor curvature
@@ -338,7 +338,7 @@ def phi_spherical_C(C, g, h, dx, X, Y, Lambda):
     X and Y: are two-dimensional numpy arrays of integers with shapes (N, M), where N and M are the dimensions of the mesh.
     Lambda: float variable indicating the illumination wavelength
     '''
-    return (np.pi/(Lambda*C))*((X-(g+1))**2 + (Y-(h+1))**2)*(dx**2)
+    return ( (np.pi/Lambda) * ( (((X-g)**2)*(dx**2)/C) + (((Y-h)**2)*(dy**2)/C) ) )
     
 def bin_CF_noTele_BAR_1d(fun, seed_cur, holoCompensate, M, N, sign):
     '''
@@ -542,13 +542,16 @@ def automatic_method(holo, M, N, X, Y, Lambda, dx, dy, algo, cost):
 
     #Compensating the tilting angle first
     holoCompensate = filter_center_plus1(FT_holo,plus_coor,m,n,Lambda,X,Y,dx,dy,k)
+    
+    #plt.figure(); plt.imshow(np.angle(holoCompensate), cmap='gray'); plt.title('holoCompensate'); 
+    #plt.gca().set_aspect('equal', adjustable='box'); plt.show()
 
     # Binarized Spherical Aberration
     BW = binarize_compensated_plus1(holoCompensate)
 
     # Get the center of the remaining spherical phase factor for the 2nd compensation
     g, h = get_g_and_h(BW)
-    
+        
     #Let's create the new reference wave to eliminate the circular phase factors. 
     Cx = np.power((M * dx), 2)/(Lambda * m)
     Cy = np.power((N * dy), 2)/(Lambda * n)
@@ -558,7 +561,7 @@ def automatic_method(holo, M, N, X, Y, Lambda, dx, dy, algo, cost):
     sign = True
     
     #Let's built the spherical phase factor for compensation
-    phi_spherical = phi_spherical_C(cur, g, h, dx, X, Y, Lambda)
+    phi_spherical = phi_spherical_C(cur, g, h, dx, dy, X, Y, Lambda)
     
     if (sign):
         phase_mask = np.exp((1j)*phi_spherical)
@@ -566,7 +569,27 @@ def automatic_method(holo, M, N, X, Y, Lambda, dx, dy, algo, cost):
         phase_mask = np.exp((-1j)*phi_spherical)
 
     #Let's apply the second (quadratic) compensation according to Kemper
-    corrected_image = holoCompensate * phase_mask
+    corrected_image = holoCompensate * phase_mask    
+    
+    # Create a figure with three subplots
+    fig, (ax1, ax2, ax3) = plt.subplots(1, 3)
+                
+    # Plot the first image in the first subplot
+    ax1.imshow(np.angle(phase_mask))
+    ax1.set_title('phase_mask')
+                
+    # Plot the second image in the second subplot
+    ax2.imshow(np.angle(holoCompensate))
+    ax2.set_title('holoCompensate')
+                
+    # Plot the third image in the third subplot
+    ax3.imshow(np.angle(corrected_image))
+    ax3.set_title('corrected_image')
+    
+    # Show the figure
+    plt.show()
+    
+    
     
     plt.figure(); plt.imshow(np.angle(corrected_image), cmap='gray'); plt.title('Non-optimized compensated image'); 
     plt.gca().set_aspect('equal', adjustable='box'); plt.show()
@@ -587,7 +610,7 @@ def automatic_method(holo, M, N, X, Y, Lambda, dx, dy, algo, cost):
     print ('Selected cost function: ', cost_fun[cost])
 
     # Define the function phi_spherical_C for the optimization (it's the same used before, but built for optimization)
-    phi_spherical_C_opt = lambda C: (np.pi / (C * Lambda)) * ((X - (g + 1))**2 + (Y - (h + 1))**2) * (dx**2)
+    phi_spherical_C_opt = lambda C: ( (np.pi/Lambda) * ( (((X-g)**2)*(dx**2)/C) + (((Y-h)**2)*(dy**2)/C) ) )    
 
     # Set the cost function
     if cost == 0:

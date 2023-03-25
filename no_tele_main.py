@@ -33,7 +33,7 @@ The main code starts here
 #["4cm_20x_bigcakes.tiff", "-4cm_20x_star.tiff", "4cm_20x_usaf.tiff", "RBCnotele50x.tiff"]
 
 #Loading image file (hologram) to process
-user_input = '4cm_20x_bigcakes_square.tif'
+user_input = '4cm_20x_usaf.tiff'
 filename = 'data/' + user_input
 print ('Non-telecentric DHM hologram: ', filename)
 
@@ -63,7 +63,7 @@ print ('Phase compensation starts...')
 #0: Manual determination of the M&N and H&G coordinates for no-tele compensation.## 
 #1: Automatic determination of these parameters. ##################################
 ###################################################################################
-auto = 0
+auto = 1
 
 if auto:
 
