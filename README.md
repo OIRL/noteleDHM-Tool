@@ -9,7 +9,8 @@ The noteleDHM method requires the sensor's pixel size and the wavelength of the 
 
 Full documentation and a user manual of noteleDHM can be found in:
 
-xxxxxxxx
+https://sites.google.com/view/noteledhmtool/home?authuser=0&pli=1
+
 
 # Requirements
 
